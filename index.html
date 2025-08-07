@@ -88,9 +88,8 @@
             margin-bottom: 1rem;
         }
         
-        /* Pastel-lyserød farve for knapper */
-        .pink-button {
-            background-color: #ffb6c1;
+        #send-btn, #copy-last-response-btn, #tts-play-btn, #tts-stop-btn {
+            background-color: #ffb6c1; /* Pastel-lyserød */
             color: white;
             border-radius: 2rem;
             font-size: 1.25rem;
@@ -99,60 +98,36 @@
             border: none;
         }
 
-        .pink-button:hover {
-            background-color: #ff91a4;
+        #send-btn:hover, #copy-last-response-btn:hover, #tts-play-btn:hover, #tts-stop-btn:hover {
+            background-color: #ff91a4; /* Mørkere pastel-lyserød ved hover */
         }
         
         #send-btn {
             width: 100%;
             padding: 1rem;
-            color: white;
-            background-color: #ffb6c1;
-            border-radius: 2rem;
-            font-size: 1.25rem;
-            cursor: pointer;
-            transition: background-color 0.3s;
-            border: none;
-        }
-        #send-btn:hover {
-            background-color: #ff91a4;
-        }
-
-        #tts-play-btn {
-            width: 100%;
-            padding: 1rem;
-            background-color: #ffb6c1;
-            color: white;
-            border-radius: 2rem;
-            font-size: 1.25rem;
-            cursor: pointer;
-            transition: background-color 0.3s;
-            border: none;
-        }
-        #tts-play-btn:hover {
-            background-color: #ff91a4;
-        }
-
-        #copy-last-response-btn {
-            padding: 0.75rem 1.5rem;
-            background-color: #ffb6c1;
-            color: white;
-            border-radius: 2rem;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: background-color 0.3s;
-            border: none;
-            white-space: nowrap;
-        }
-        #copy-last-response-btn:hover {
-            background-color: #ff91a4;
         }
         
+        #copy-last-response-btn {
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            white-space: nowrap;
+        }
+
+        .tts-buttons {
+            display: flex;
+            gap: 1rem;
+            width: 100%;
+        }
+
+        #tts-play-btn, #tts-stop-btn {
+            width: 50%;
+            padding: 1rem;
+        }
+
         .copy-button-container {
             align-self: center;
             margin-top: 10rem;
         }
-
     </style>
 </head>
 <body class="flex justify-start min-h-screen p-4 sm:p-12">
@@ -187,9 +162,14 @@
         
         <div class="tts-controls">
             <textarea id="tts-input" placeholder="Write your text here"></textarea>
-            <button id="tts-play-btn">
-                <i class="fas fa-play"></i> Play
-            </button>
+            <div class="tts-buttons">
+                <button id="tts-play-btn">
+                    <i class="fas fa-play"></i> Play
+                </button>
+                <button id="tts-stop-btn">
+                    <i class="fas fa-stop"></i> Stop
+                </button>
+            </div>
         </div>
     </div>
 
@@ -203,6 +183,7 @@
         // DOM elements for TTS
         const ttsInput = document.getElementById('tts-input');
         const ttsPlayBtn = document.getElementById('tts-play-btn');
+        const ttsStopBtn = document.getElementById('tts-stop-btn');
         const copyLastResponseBtn = document.getElementById('copy-last-response-btn');
         
         // Helper function to add messages to the chat window
@@ -308,16 +289,19 @@
             }
         });
 
-        // Event listener for TTS
+        // Event listener for TTS Play
         ttsPlayBtn.addEventListener('click', () => {
             const textToSpeak = ttsInput.value.trim();
             if (textToSpeak) {
-                console.log("Afspiller teksten:", textToSpeak);
-
                 const speech = new SpeechSynthesisUtterance(textToSpeak);
                 speech.lang = 'da-DK';
                 window.speechSynthesis.speak(speech);
             }
+        });
+
+        // Event listener for TTS Stop
+        ttsStopBtn.addEventListener('click', () => {
+            window.speechSynthesis.cancel();
         });
 
         // Ny event listener for kopieringsknappen
