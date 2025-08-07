@@ -30,7 +30,7 @@
             color: #374151;
             border-bottom-left-radius: 0;
         }
-        /* Simple typing animation */
+        /* Enkel skriveanimation */
         .typing::after {
             overflow: hidden;
             display: inline-block;
@@ -55,21 +55,21 @@
             Oraculum
         </div>
 
-        <!-- Chat window -->
+        <!-- Chatvindue -->
         <div id="chat-window" class="flex-grow p-6 overflow-y-auto space-y-4">
-            <!-- Chat messages will be displayed here -->
+            <!-- Chatbeskeder vises her -->
         </div>
 
-        <!-- Input area -->
+        <!-- Input-område -->
         <div class="p-4 border-t border-gray-200 rounded-b-2xl flex items-center space-x-2">
-            <input type="text" id="chat-input" class="flex-grow p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" placeholder="Type your message...">
+            <input type="text" id="chat-input" class="flex-grow p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" placeholder="Skriv din besked...">
             
             <div class="flex items-center space-x-2">
                 <input type="checkbox" id="autoplay-checkbox" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-                <label for="autoplay-checkbox" class="text-sm text-gray-700">Auto-play</label>
+                <label for="autoplay-checkbox" class="text-sm text-gray-700">Afspil automatisk</label>
             </div>
             
-            <button id="speak-btn" class="p-3 bg-gray-200 text-gray-600 rounded-xl hover:bg-gray-300 transition-colors" title="Play latest response" disabled>
+            <button id="speak-btn" class="p-3 bg-gray-200 text-gray-600 rounded-xl hover:bg-gray-300 transition-colors" title="Afspil seneste svar" disabled>
                 <span id="speak-icon" class="fas fa-volume-up"></span>
             </button>
             <button id="send-btn" class="p-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors">
@@ -79,7 +79,7 @@
     </div>
 
     <script>
-        // DOM elements
+        // DOM-elementer
         const chatWindow = document.getElementById('chat-window');
         const chatInput = document.getElementById('chat-input');
         const sendBtn = document.getElementById('send-btn');
@@ -87,13 +87,12 @@
         const speakIcon = document.getElementById('speak-icon');
         const autoplayCheckbox = document.getElementById('autoplay-checkbox');
         
-        // Global variables for audio handling
+        // Globale variabler til lydhåndtering
         let lastBotResponse = '';
         let isSpeaking = false;
-        let audioQueue = [];
-        let isProcessingQueue = false;
+        const audioPlayer = new Audio();
 
-        // Helper function to add messages to the chat window
+        // Hjælpefunktion til at tilføje beskeder til chatvinduet
         function addMessage(sender, message, isTyping = false) {
             const messageWrapper = document.createElement('div');
             messageWrapper.classList.add('flex', 'flex-col', sender === 'user' ? 'items-end' : 'items-start');
@@ -104,9 +103,9 @@
             
             if (isTyping) {
                 messageBubble.classList.add('typing');
-                messageBubble.innerText = "AI's thinking...";
+                messageBubble.innerText = "AI'en tænker...";
             } else {
-                // Function to convert simple Markdown (e.g., *text* to <em>text</em>)
+                // Funktion til at konvertere simpel Markdown (f.eks. *tekst* til <em>tekst</em>)
                 const convertMarkdown = (text) => {
                     return text.replace(/\*(.*?)\*/g, '<em>$1</em>');
                 };
@@ -115,141 +114,121 @@
             
             messageWrapper.appendChild(messageBubble);
             chatWindow.appendChild(messageWrapper);
-            chatWindow.scrollTop = chatWindow.scrollHeight; // Scroll to the bottom
+            chatWindow.scrollTop = chatWindow.scrollHeight; // Rul til bunden
             
             if (sender === 'bot' && !isTyping) {
                 lastBotResponse = message;
             }
         }
 
-        // Function to stop audio playback
+        // Funktion til at stoppe afspilning
         function stopSpeaking() {
-            isSpeaking = false;
-            audioQueue = []; // Clear the queue of any pending audio
-            if (window.currentAudio) {
-                window.currentAudio.pause();
-                window.currentAudio.currentTime = 0;
-            }
-            speakBtn.disabled = false;
-            speakIcon.classList.remove('fa-stop', 'text-red-500');
-            speakIcon.classList.add('fa-volume-up', 'text-gray-600');
-        }
-
-        // Function to play audio from the queue
-        async function playNextChunk() {
-            if (audioQueue.length > 0 && isSpeaking) {
-                const audioUrl = audioQueue.shift();
-                window.currentAudio = new Audio(audioUrl);
-                
-                window.currentAudio.onended = () => {
-                    URL.revokeObjectURL(audioUrl);
-                    playNextChunk();
-                };
-                
-                try {
-                    await window.currentAudio.play();
-                } catch (error) {
-                    console.error('Audio playback failed:', error);
-                    stopSpeaking();
-                }
-            } else {
-                isProcessingQueue = false;
-                stopSpeaking();
+            if (isSpeaking) {
+                audioPlayer.pause();
+                audioPlayer.currentTime = 0;
+                isSpeaking = false;
+                speakBtn.disabled = false;
+                speakIcon.classList.remove('fa-stop', 'text-red-500');
+                speakIcon.classList.add('fa-volume-up', 'text-gray-600');
             }
         }
 
-        // Function to split text into manageable chunks by sentence.
-        function splitTextIntoChunks(text) {
-            // Split by common sentence-ending punctuation.
-            const sentences = text.match(/[^.!?]+[.!?]|\S+/g) || [];
-            let chunks = [];
-            let currentChunk = '';
-
-            for (const sentence of sentences) {
-                if ((currentChunk + ' ' + sentence).length < 200) { // Limit chunk size to avoid API errors
-                    currentChunk += (currentChunk ? ' ' : '') + sentence;
-                } else {
-                    if (currentChunk) {
-                        chunks.push(currentChunk);
-                    }
-                    currentChunk = sentence;
-                }
-            }
-            if (currentChunk) {
-                chunks.push(currentChunk);
-            }
-            return chunks;
-        }
-
-        // Function to convert text to speech and play it
+        // Funktion til at konvertere tekst til tale og afspille den
         async function speakResponse() {
             if (!lastBotResponse) {
-                console.warn('No text to speak. Waiting for a bot response.');
+                console.warn('Ingen tekst at afspille. Venter på et AI-svar.');
                 return;
             }
 
+            // Hvis vi allerede afspiller, stopper vi afspilningen
             if (isSpeaking) {
                 stopSpeaking();
                 return;
             }
             
+            // Vis loading-tilstand og opdater knappen
             isSpeaking = true;
-            isProcessingQueue = true;
             speakBtn.disabled = true;
             speakIcon.classList.remove('fa-volume-up');
             speakIcon.classList.add('fa-spinner', 'fa-spin');
 
-            const textChunks = splitTextIntoChunks(lastBotResponse);
-
             try {
-                for (const chunk of textChunks) {
-                    if (!isSpeaking) break; // Check if the user has stopped playback
+                // Her bruges den nye model
+                const payload = {
+                    contents: [{
+                        parts: [{ text: lastBotResponse }]
+                    }],
+                    generationConfig: {
+                        responseModalities: ["AUDIO"],
+                        speechConfig: {
+                            voiceConfig: {
+                                prebuiltVoiceConfig: { voiceName: "Kore" }
+                            }
+                        }
+                    },
+                    model: "gemini-2.5-pro-preview-tts"
+                };
 
-                    const response = await fetch('/api/tts', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ text: chunk })
-                    });
-                    
-                    if (!response.ok) {
-                        const errorData = await response.json();
-                        throw new Error(errorData.error || 'Failed to generate speech.');
-                    }
+                const apiKey = "";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro-preview-tts:generateContent?key=${apiKey}`;
 
-                    const blob = await response.blob();
-                    const audioUrl = URL.createObjectURL(blob);
-                    audioQueue.push(audioUrl);
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to generate speech.');
                 }
 
-                if (isSpeaking) {
+                const result = await response.json();
+                const part = result?.candidates?.[0]?.content?.parts?.[0];
+                const audioData = part?.inlineData?.data;
+                const mimeType = part?.inlineData?.mimeType;
+
+                if (audioData && mimeType && mimeType.startsWith("audio/")) {
+                    // Update knap-ikonet til "stop"
                     speakBtn.disabled = false;
                     speakIcon.classList.remove('fa-spinner', 'fa-spin');
                     speakIcon.classList.add('fa-stop', 'text-red-500');
-                    await playNextChunk();
-                } else {
-                    stopSpeaking();
-                }
 
+                    // Konverter Base64 data til en AudioBlob og afspil
+                    const audioUrl = `data:${mimeType};base64,${audioData}`;
+                    audioPlayer.src = audioUrl;
+                    audioPlayer.play();
+
+                    // Lyt efter, når lyden er færdig med at spille
+                    audioPlayer.onended = () => {
+                        stopSpeaking();
+                    };
+
+                } else {
+                    throw new Error('Invalid audio data received from API.');
+                }
+                
             } catch (error) {
-                console.error('Error during TTS:', error);
-                addMessage('bot', `Speech generation error: ${error.message}`);
+                console.error('Fejl under TTS:', error);
+                addMessage('bot', `Fejl ved generering af tale: ${error.message}`);
                 stopSpeaking();
             }
         }
 
-        // Function to send a message to the chatbot API
+        // Funktion til at sende en besked til chatbot-API'en
         async function sendMessage() {
             const userMessage = chatInput.value.trim();
             if (!userMessage) return;
 
-            stopSpeaking();
+            // Før afsendelse, deaktiver afspilningsknappen og ryd eventuelle tidligere svar
+            stopSpeaking(); // Stop enhver aktuel afspilning
             speakBtn.disabled = true;
             lastBotResponse = '';
 
             addMessage('user', userMessage);
             chatInput.value = '';
 
-            addMessage('bot', '', true);
+            addMessage('bot', '', true); // Vis 'skriver'-animation
 
             try {
                 const response = await fetch('/api', {
@@ -259,22 +238,23 @@
                 });
                 const data = await response.json();
                 
-                chatWindow.lastChild.remove();
+                chatWindow.lastChild.remove(); // Fjern 'skriver'-animation
                 
                 if (data.error) {
-                    addMessage('bot', `Error: ${data.error}`);
+                    addMessage('bot', `Fejl: ${data.error}`);
                     speakBtn.disabled = true;
                 } else {
                     addMessage('bot', data.text);
+                    // Ved et vellykket svar, aktiver afspilningsknappen
                     speakBtn.disabled = false;
                     if (autoplayCheckbox.checked) {
                         speakResponse();
                     }
                 }
             } catch (error) {
-                console.error('Error:', error);
+                console.error('Fejl:', error);
                 chatWindow.lastChild.remove();
-                addMessage('bot', 'Could not connect to the server.');
+                addMessage('bot', 'Kunne ikke oprette forbindelse til serveren.');
                 speakBtn.disabled = true;
             }
         }
