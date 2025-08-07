@@ -23,7 +23,7 @@
         }
         .message-bubble {
             border-radius: 1.5rem; /* Softer, more rounded corners */
-            padding: 0.75rem 1.25rem;
+            padding: 0.5rem 1.25rem; /* Reduced padding for smaller height */
             max-width: 80%;
         }
         .user-bubble {
@@ -33,6 +33,12 @@
         }
         .bot-bubble {
             background-color: #5a5a5a;
+            color: white;
+            border-bottom-left-radius: 0.5rem; /* Subtle tail */
+        }
+        /* New style for iPhone-like bot bubbles */
+        .bot-bubble-iphone {
+            background-color: #34c759; /* Light green background */
             color: white;
             border-bottom-left-radius: 0.5rem; /* Subtle tail */
         }
@@ -97,7 +103,12 @@
 
             const messageBubble = document.createElement('div');
             messageBubble.classList.add('message-bubble');
-            messageBubble.classList.add(sender === 'user' ? 'user-bubble' : 'bot-bubble');
+            
+            if (sender === 'user') {
+                messageBubble.classList.add('user-bubble');
+            } else {
+                messageBubble.classList.add('bot-bubble-iphone');
+            }
             
             if (isTyping) {
                 messageBubble.classList.add('typing');
