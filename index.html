@@ -86,18 +86,11 @@
         const speakBtn = document.getElementById('speak-btn');
         const speakIcon = document.getElementById('speak-icon');
         const autoplayCheckbox = document.getElementById('autoplay-checkbox');
-
+        
         // Globale variabler til lydhåndtering
         let lastBotResponse = '';
         let isSpeaking = false;
-        const synth = window.speechSynthesis;
-        let activeUtterance = null;
-        let isSynthSupported = 'speechSynthesis' in window;
-
-        if (!isSynthSupported) {
-            alert('Din browser understøtter ikke Web Speech API. Talefunktionen vil ikke virke.');
-            speakBtn.disabled = true;
-        }
+        const audioPlayer = new Audio();
 
         // Hjælpefunktion til at tilføje beskeder til chatvinduet
         function addMessage(sender, message, isTyping = false) {
@@ -112,7 +105,6 @@
                 messageBubble.classList.add('typing');
                 messageBubble.innerText = "AI'en tænker...";
             } else {
-                // Funktion til at konvertere simpel Markdown (f.eks. *tekst* til <em>tekst</em>)
                 const convertMarkdown = (text) => {
                     return text.replace(/\*(.*?)\*/g, '<em>$1</em>');
                 };
@@ -131,7 +123,8 @@
         // Funktion til at stoppe afspilning
         function stopSpeaking() {
             if (isSpeaking) {
-                synth.cancel();
+                audioPlayer.pause();
+                audioPlayer.currentTime = 0;
                 isSpeaking = false;
                 speakBtn.disabled = false;
                 speakIcon.classList.remove('fa-stop', 'text-red-500');
@@ -140,45 +133,86 @@
         }
 
         // Funktion til at konvertere tekst til tale og afspille den
-        function speakResponse() {
-            if (!isSynthSupported || !lastBotResponse) {
-                console.warn('Ingen tekst at afspille, eller Speech API er ikke understøttet.');
+        async function speakResponse() {
+            if (!lastBotResponse) {
+                console.warn('Ingen tekst at afspille. Venter på et AI-svar.');
                 return;
             }
 
-            // Hvis vi allerede afspiller, stopper vi afspilningen
             if (isSpeaking) {
                 stopSpeaking();
                 return;
             }
             
-            // Vis loading-tilstand og opdater knappen
             isSpeaking = true;
             speakBtn.disabled = true;
             speakIcon.classList.remove('fa-volume-up');
             speakIcon.classList.add('fa-spinner', 'fa-spin');
 
-            const utterance = new SpeechSynthesisUtterance(lastBotResponse);
-            utterance.lang = 'da-DK'; // Indstil sproget til dansk
-            
-            utterance.onstart = () => {
-                speakBtn.disabled = false;
-                speakIcon.classList.remove('fa-spinner', 'fa-spin');
-                speakIcon.classList.add('fa-stop', 'text-red-500');
-            };
+            try {
+                // Her bruges den nye model, som din Python-kode også bruger
+                const payload = {
+                    contents: [{
+                        parts: [{ text: lastBotResponse }]
+                    }],
+                    generationConfig: {
+                        responseModalities: ["AUDIO"],
+                        speechConfig: {
+                            voiceConfig: {
+                                prebuiltVoiceConfig: { voiceName: "Kore" }
+                            }
+                        }
+                    },
+                    model: "gemini-2.5-flash-preview-tts"
+                };
 
-            utterance.onend = () => {
-                stopSpeaking();
-            };
+                const apiKey = "";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
 
-            utterance.onerror = (event) => {
-                console.error('Speech synthesis error:', event.error);
-                addMessage('bot', `Fejl ved generering af tale: ${event.error}`);
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    let errorMessage = 'Ukendt fejl ved generering af tale.';
+                    if (errorData && errorData.error && errorData.error.message) {
+                        errorMessage = errorData.error.message;
+                    } else if (response.status === 403) {
+                        errorMessage = '403 Forbidden: API-nøglen har ikke adgang til denne TTS-model fra dette miljø.';
+                    }
+                    throw new Error(errorMessage);
+                }
+
+                const result = await response.json();
+                const part = result?.candidates?.[0]?.content?.parts?.[0];
+                const audioData = part?.inlineData?.data;
+                const mimeType = part?.inlineData?.mimeType;
+
+                if (audioData && mimeType && mimeType.startsWith("audio/")) {
+                    speakBtn.disabled = false;
+                    speakIcon.classList.remove('fa-spinner', 'fa-spin');
+                    speakIcon.classList.add('fa-stop', 'text-red-500');
+
+                    const audioUrl = `data:${mimeType};base64,${audioData}`;
+                    audioPlayer.src = audioUrl;
+                    audioPlayer.play();
+
+                    audioPlayer.onended = () => {
+                        stopSpeaking();
+                    };
+
+                } else {
+                    throw new Error('Ugyldige lyddata modtaget fra API.');
+                }
+                
+            } catch (error) {
+                console.error('Fejl under TTS:', error);
+                addMessage('bot', `Fejl ved generering af tale: ${error.message}`);
                 stopSpeaking();
-            };
-            
-            synth.speak(utterance);
-            activeUtterance = utterance; // Gem referencen til den aktive tale
+            }
         }
 
         // Funktion til at sende en besked til chatbot-API'en
@@ -186,15 +220,14 @@
             const userMessage = chatInput.value.trim();
             if (!userMessage) return;
 
-            // Før afsendelse, deaktiver afspilningsknappen og ryd eventuelle tidligere svar
-            stopSpeaking(); // Stop enhver aktuel afspilning
+            stopSpeaking();
             speakBtn.disabled = true;
             lastBotResponse = '';
 
             addMessage('user', userMessage);
             chatInput.value = '';
 
-            addMessage('bot', '', true); // Vis 'skriver'-animation
+            addMessage('bot', '', true);
 
             try {
                 const response = await fetch('/api', {
@@ -204,19 +237,16 @@
                 });
                 const data = await response.json();
                 
-                chatWindow.lastChild.remove(); // Fjern 'skriver'-animation
+                chatWindow.lastChild.remove();
                 
                 if (data.error) {
                     addMessage('bot', `Fejl: ${data.error}`);
                     speakBtn.disabled = true;
                 } else {
                     addMessage('bot', data.text);
-                    // Ved et vellykket svar, aktiver afspilningsknappen
-                    if (isSynthSupported) {
-                        speakBtn.disabled = false;
-                        if (autoplayCheckbox.checked) {
-                            speakResponse();
-                        }
+                    speakBtn.disabled = false;
+                    if (autoplayCheckbox.checked) {
+                        speakResponse();
                     }
                 }
             } catch (error) {
@@ -234,11 +264,7 @@
                 sendMessage();
             }
         });
-        
-        // Kun tilføj event listener, hvis API'en er understøttet
-        if (isSynthSupported) {
-            speakBtn.addEventListener('click', speakResponse);
-        }
+        speakBtn.addEventListener('click', speakResponse);
     </script>
 </body>
 </html>
