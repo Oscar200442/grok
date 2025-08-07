@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Grok Chatbot</title>
+    <title>Gemini Chatbot</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -76,7 +76,7 @@
 <body>
     <div class="chat-container">
         <div class="chat-messages" id="chat-messages">
-            <div class="message bot">Hej, jeg er din Grok-chatbot. Spørg mig om noget!</div>
+            <div class="message bot">Hej, jeg er din Gemini-chatbot. Spørg mig om noget!</div>
         </div>
         <div class="chat-input">
             <input type="text" id="user-input" placeholder="Skriv din besked...">
@@ -115,7 +115,7 @@
 
                 const data = await response.json();
 
-                // Vis Grok-svaret i chatten
+                // Vis Gemini-svaret i chatten
                 const botMessageDiv = document.createElement('div');
                 botMessageDiv.classList.add('message', 'bot');
                 botMessageDiv.textContent = data.text || data.error;
@@ -123,10 +123,10 @@
                 chatMessages.scrollTop = chatMessages.scrollHeight;
 
             } catch (error) {
-                console.error('Fejl ved hentning af Grok-svar:', error);
+                console.error('Fejl ved hentning af Gemini-svar:', error);
                 const errorMessageDiv = document.createElement('div');
                 errorMessageDiv.classList.add('message', 'bot');
-                errorMessageDiv.textContent = 'Undskyld, jeg kunne ikke forbinde til Grok. Prøv igen senere.';
+                errorMessageDiv.textContent = 'Undskyld, jeg kunne ikke forbinde til Gemini. Prøv igen senere.';
                 chatMessages.appendChild(errorMessageDiv);
                 chatMessages.scrollTop = chatMessages.scrollHeight;
             }
