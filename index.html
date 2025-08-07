@@ -90,29 +90,8 @@
         // Global variables for audio handling
         let lastBotResponse = '';
         let isSpeaking = false;
-        let audioContext;
-        let sourceNodes = [];
-        let scheduledTime = 0;
-        let audioBufferQueue = [];
-
-        // Creates an AudioContext, which is necessary for playing audio
-        function getAudioContext() {
-            if (!audioContext) {
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            }
-            return audioContext;
-        }
-
-        // Converts Base64 string to ArrayBuffer
-        function base64ToArrayBuffer(base64) {
-            const binaryString = window.atob(base64);
-            const len = binaryString.length;
-            const bytes = new Uint8Array(len);
-            for (let i = 0; i < len; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
-            }
-            return bytes.buffer;
-        }
+        let audioQueue = [];
+        let isProcessingQueue = false;
 
         // Helper function to add messages to the chat window
         function addMessage(sender, message, isTyping = false) {
@@ -145,49 +124,61 @@
 
         // Function to stop audio playback
         function stopSpeaking() {
-            if (isSpeaking) {
-                sourceNodes.forEach(node => {
-                    try {
-                        node.stop();
-                    } catch (e) {
-                        // The node may have already stopped
-                    }
-                });
-                sourceNodes = [];
-                isSpeaking = false;
-                speakBtn.disabled = false;
-                speakIcon.classList.remove('fa-stop', 'text-red-500');
-                speakIcon.classList.add('fa-volume-up', 'text-gray-600');
+            isSpeaking = false;
+            audioQueue = []; // Clear the queue of any pending audio
+            if (window.currentAudio) {
+                window.currentAudio.pause();
+                window.currentAudio.currentTime = 0;
             }
+            speakBtn.disabled = false;
+            speakIcon.classList.remove('fa-stop', 'text-red-500');
+            speakIcon.classList.add('fa-volume-up', 'text-gray-600');
         }
 
         // Function to play audio from the queue
-        function playFromQueue() {
-            if (audioBufferQueue.length > 0 && isSpeaking) {
-                const buffer = audioBufferQueue.shift();
-                const audioCtx = getAudioContext();
+        async function playNextChunk() {
+            if (audioQueue.length > 0 && isSpeaking) {
+                const audioUrl = audioQueue.shift();
+                window.currentAudio = new Audio(audioUrl);
                 
-                const source = audioCtx.createBufferSource();
-                source.buffer = buffer;
-                source.connect(audioCtx.destination);
-                
-                // Schedule playback of this chunk immediately after the previous one
-                const now = audioCtx.currentTime;
-                if (scheduledTime < now) {
-                    scheduledTime = now;
-                }
-                
-                source.start(scheduledTime);
-                scheduledTime += buffer.duration;
-                sourceNodes.push(source);
-                
-                source.onended = () => {
-                    playFromQueue();
+                window.currentAudio.onended = () => {
+                    URL.revokeObjectURL(audioUrl);
+                    playNextChunk();
                 };
-            } else if (audioBufferQueue.length === 0 && isSpeaking) {
-                // If the queue is empty, we are finished speaking
+                
+                try {
+                    await window.currentAudio.play();
+                } catch (error) {
+                    console.error('Audio playback failed:', error);
+                    stopSpeaking();
+                }
+            } else {
+                isProcessingQueue = false;
                 stopSpeaking();
             }
+        }
+
+        // Function to split text into manageable chunks by sentence.
+        function splitTextIntoChunks(text) {
+            // Split by common sentence-ending punctuation.
+            const sentences = text.match(/[^.!?]+[.!?]|\S+/g) || [];
+            let chunks = [];
+            let currentChunk = '';
+
+            for (const sentence of sentences) {
+                if ((currentChunk + ' ' + sentence).length < 200) { // Limit chunk size to avoid API errors
+                    currentChunk += (currentChunk ? ' ' : '') + sentence;
+                } else {
+                    if (currentChunk) {
+                        chunks.push(currentChunk);
+                    }
+                    currentChunk = sentence;
+                }
+            }
+            if (currentChunk) {
+                chunks.push(currentChunk);
+            }
+            return chunks;
         }
 
         // Function to convert text to speech and play it
@@ -197,66 +188,48 @@
                 return;
             }
 
-            // If we are already speaking, stop playback instead
             if (isSpeaking) {
                 stopSpeaking();
                 return;
             }
             
-            // Show loading state and update button
             isSpeaking = true;
+            isProcessingQueue = true;
             speakBtn.disabled = true;
             speakIcon.classList.remove('fa-volume-up');
             speakIcon.classList.add('fa-spinner', 'fa-spin');
 
-            try {
-                const audioCtx = getAudioContext();
-                scheduledTime = audioCtx.currentTime;
-                audioBufferQueue = [];
+            const textChunks = splitTextIntoChunks(lastBotResponse);
 
-                const response = await fetch('/api/tts', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text: lastBotResponse })
-                });
-                
-                if (!response.ok || !response.body) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || 'Failed to generate speech.');
+            try {
+                for (const chunk of textChunks) {
+                    if (!isSpeaking) break; // Check if the user has stopped playback
+
+                    const response = await fetch('/api/tts', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text: chunk })
+                    });
+                    
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || 'Failed to generate speech.');
+                    }
+
+                    const blob = await response.blob();
+                    const audioUrl = URL.createObjectURL(blob);
+                    audioQueue.push(audioUrl);
                 }
 
-                // Update the button icon to "stop"
-                speakBtn.disabled = false;
-                speakIcon.classList.remove('fa-spinner', 'fa-spin');
-                speakIcon.classList.add('fa-stop', 'text-red-500');
+                if (isSpeaking) {
+                    speakBtn.disabled = false;
+                    speakIcon.classList.remove('fa-spinner', 'fa-spin');
+                    speakIcon.classList.add('fa-stop', 'text-red-500');
+                    await playNextChunk();
+                } else {
+                    stopSpeaking();
+                }
 
-                // Read the audio data stream
-                const streamReader = response.body.getReader();
-                
-                const processStream = async () => {
-                    while (true) {
-                        const { done, value } = await streamReader.read();
-                        if (!isSpeaking) { // Check if user has stopped playback
-                            break;
-                        }
-                        if (done) {
-                            break;
-                        }
-                        
-                        const audioChunk = JSON.parse(new TextDecoder().decode(value));
-                        const audioData = base64ToArrayBuffer(audioChunk.inlineData.data);
-                        
-                        audioCtx.decodeAudioData(audioData, buffer => {
-                            audioBufferQueue.push(buffer);
-                            if (audioBufferQueue.length === 1) { // Start playing when the first chunk arrives
-                                playFromQueue();
-                            }
-                        });
-                    }
-                };
-
-                processStream();
-                
             } catch (error) {
                 console.error('Error during TTS:', error);
                 addMessage('bot', `Speech generation error: ${error.message}`);
@@ -269,15 +242,14 @@
             const userMessage = chatInput.value.trim();
             if (!userMessage) return;
 
-            // Before sending, disable the speak button and clear any previous bot response
-            stopSpeaking(); // Stop any current playback
+            stopSpeaking();
             speakBtn.disabled = true;
             lastBotResponse = '';
 
             addMessage('user', userMessage);
             chatInput.value = '';
 
-            addMessage('bot', '', true); // Show 'typing' animation
+            addMessage('bot', '', true);
 
             try {
                 const response = await fetch('/api', {
@@ -287,14 +259,13 @@
                 });
                 const data = await response.json();
                 
-                chatWindow.lastChild.remove(); // Remove 'typing' animation
+                chatWindow.lastChild.remove();
                 
                 if (data.error) {
                     addMessage('bot', `Error: ${data.error}`);
                     speakBtn.disabled = true;
                 } else {
                     addMessage('bot', data.text);
-                    // On a successful response, enable the speak button
                     speakBtn.disabled = false;
                     if (autoplayCheckbox.checked) {
                         speakResponse();
