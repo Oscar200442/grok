@@ -30,7 +30,7 @@ module.exports = async (req, res) => {
 
     try {
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-pro"});
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash"});
 
         // Send the user's message to the Gemini API.
         const result = await model.generateContent(userPrompt);
