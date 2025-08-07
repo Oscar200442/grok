@@ -13,51 +13,40 @@
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #555555;
-            display: flex;
-            justify-content: flex-end;
-            align-items: flex-start;
-            min-height: 100vh;
-            padding: 4rem 12rem;
-            gap: 12rem;
+            background-color: #808080;
         }
-        .chat-container, .tts-container {
-            width: 95%;
-            max-width: 450px;
-            /* Changed the outer container to a darker gray to make the chat window visible */
-            background-color: #555555;
+        .chat-container {
+            width: 95%; /* Responsive width for all devices */
+            max-width: 450px; /* Limits the width on larger screens */
+            background-color: #808080;
             border-radius: 2rem;
-            height: 90vh;
-            display: flex;
-            flex-direction: column;
-            padding: 1.5rem;
-        }
-        #chat-window {
-            /* Now set to #3A3A3A as requested, which is visible against the darker container */
-            background-color: #3A3A3A;
-            flex-grow: 1;
-            padding: 1.5rem;
-            overflow-y: auto;
-            space-y: 4;
         }
         .message-bubble {
-            border-radius: 1.5rem;
-            padding: 0.5rem 1.25rem;
+            border-radius: 1.5rem; /* Softer, more rounded corners */
+            padding: 0.5rem 1.25rem; /* Reduced padding for smaller height */
             max-width: 80%;
         }
         .user-bubble {
             background-color: #1d4ed8;
             color: white;
-            border-bottom-right-radius: 0.5rem;
+            border-bottom-right-radius: 0.5rem; /* Subtle tail */
         }
-        .bot-bubble-iphone {
-            background-color: #34c759;
+        .bot-bubble {
+            background-color: #5a5a5a;
             color: white;
-            border-bottom-left-radius: 0.5rem;
+            border-bottom-left-radius: 0.5rem; /* Subtle tail */
         }
-        #chat-input::placeholder, #tts-input::placeholder {
+        /* New style for iPhone-like bot bubbles */
+        .bot-bubble-iphone {
+            background-color: #34c759; /* Light green background */
+            color: white;
+            border-bottom-left-radius: 0.5rem; /* Subtle tail */
+        }
+        /* Style for placeholder text in the input box */
+        #chat-input::placeholder {
             color: #d1d5db;
         }
+        /* Simple typing animation */
         .typing::after {
             overflow: hidden;
             display: inline-block;
@@ -72,227 +61,43 @@
                 width: 1.25em;
             }
         }
-        .title-font {
+        /* New font for the Oraculum title */
+        #oraculum-title {
             font-family: 'Permanent Marker', cursive;
         }
-        
-        .tts-controls {
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-end;
-            align-items: center;
-            padding: 2rem;
-        }
-        
-        #tts-input {
-            width: 100%;
-            height: 200px;
-            padding: 1rem;
-            border-radius: 1rem;
-            /* Changed input background to be darker */
-            background-color: #3a3a3a;
-            color: white;
-            border: none;
-            resize: none;
-            font-size: 1rem;
-            margin-bottom: 1rem;
-        }
-        
-        #chat-input {
-            width: 100%;
-            padding: 1rem;
-            border-radius: 1rem;
-            /* Changed input background to be darker */
-            background-color: #3a3a3a;
-            color: white;
-            border: none;
-            font-size: 1rem;
-        }
-        
-        #send-btn, #copy-last-response-btn, #tts-play-btn, #tts-stop-btn, #import-epub-btn, #download-pdf-btn {
-            background-color: #ffb6c1;
-            color: white;
-            border-radius: 2rem;
-            cursor: pointer;
-            transition: background-color 0.3s;
-            border: none;
-        }
-
-        #send-btn:hover, #copy-last-response-btn:hover, #tts-play-btn:hover, #tts-stop-btn:hover, #import-epub-btn:hover, #download-pdf-btn:hover {
-            background-color: #ff91a4;
-        }
-        
-        #send-btn {
-            width: 100%;
-            padding: 1rem;
-            font-size: 1.25rem;
-        }
-        
-        #copy-last-response-btn {
-            padding: 0.75rem 1.5rem;
-            font-size: 1rem;
-            white-space: nowrap;
-        }
-
-        .tts-buttons {
-            display: flex;
-            gap: 1rem;
-            width: 100%;
-            margin-top: 1rem;
-        }
-        
-        #tts-play-btn, #tts-stop-btn {
-            width: 50%;
-            padding: 1rem;
-            font-size: 1.25rem;
-        }
-        
-        #import-epub-btn, #download-pdf-btn {
-            width: 100%;
-            padding: 0.75rem 1.5rem;
-            font-size: 1rem;
-        }
-        
-        .copy-button-container {
-            align-self: center;
-            margin-top: 10rem;
-        }
-        
-        .pink-slider {
-            width: 100%;
-            height: 8px;
-            background: #e9b3bc;
-            border-radius: 4px;
-            -webkit-appearance: none;
-            cursor: pointer;
-            margin-top: 1.5rem;
-        }
-
-        .pink-slider::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 20px;
-            height: 20px;
-            background: #ffb6c1;
-            border-radius: 50%;
-            /* Updated border color to match the new container */
-            border: 2px solid #555555;
-            cursor: pointer;
-        }
-        
-        .pink-slider::-moz-range-thumb {
-            width: 20px;
-            height: 20px;
-            background: #ffb6c1;
-            border-radius: 50%;
-            /* Updated border color to match the new container */
-            border: 2px solid #555555;
-            cursor: pointer;
-        }
-        
-        .slider-label {
-            color: white;
-            font-size: 0.875rem;
-            text-align: center;
-        }
-
-        .hidden {
-            display: none;
-        }
-
     </style>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
 <body class="flex justify-start min-h-screen p-4 sm:p-12">
 
-    <!-- Chatbot Section -->
-    <div class="chat-container h-[90vh] rounded-2xl flex flex-col">
-        <div id="oraculum-title" class="p-6 text-center text-4xl font-normal text-white rounded-t-2xl title-font">
+    <div class="chat-container h-[90vh] bg-[#808080] rounded-2xl flex flex-col">
+        
+        <div id="oraculum-title" class="p-6 text-center text-4xl font-normal text-white rounded-t-2xl">
             Actuary AI
         </div>
 
+        <!-- Chat window -->
         <div id="chat-window" class="flex-grow p-6 overflow-y-auto space-y-4">
+            <!-- Chat messages will appear here -->
         </div>
 
+        <!-- Input area -->
         <div class="p-4 rounded-b-2xl flex flex-col items-center space-y-2">
-            <input type="text" id="chat-input" class="w-full p-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow text-white" placeholder="Type your message...">
-            <button id="send-btn">
+            <input type="text" id="chat-input" class="w-full p-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow bg-[#5a5a5a] text-white" placeholder="Type your message...">
+            
+            <button id="send-btn" class="w-full p-3 bg-[#5a5a5a] text-white rounded-full hover:bg-[#6c6c6c] transition-colors">
                 Send
             </button>
         </div>
     </div>
 
-    <!-- Button to transfer last AI response -->
-    <div class="copy-button-container flex flex-col items-center justify-center h-[90vh]">
-        <button id="copy-last-response-btn" class="flex items-center space-x-2">
-            <i class="fas fa-arrow-right"></i>
-            <span>Transfer AI Response</span>
-        </button>
-    </div>
-
-    <!-- Right side: Text-to-Voice -->
-    <div class="tts-container h-[90vh] rounded-2xl flex flex-col">
-        <div id="tts-title" class="p-6 text-center text-4xl font-normal text-white rounded-t-2xl title-font">
-            Text to Voice
-        </div>
-        
-        <div class="tts-controls">
-            <textarea id="tts-input" placeholder="Write your text here"></textarea>
-            
-            <input type="file" id="epub-file-input" class="hidden" accept=".epub">
-            <button id="import-epub-btn" class="mt-4">
-                <i class="fas fa-file-import"></i> Import EPUB
-            </button>
-            <button id="download-pdf-btn" class="mt-4 hidden">
-                <i class="fas fa-download"></i> Download PDF
-            </button>
-            <p id="loading-message" class="text-white mt-2 hidden">Processing...</p>
-
-            <div class="tts-buttons">
-                <button id="tts-play-btn">
-                    <i class="fas fa-play"></i> Play
-                </button>
-                <button id="tts-stop-btn">
-                    <i class="fas fa-stop"></i> Stop
-                </button>
-            </div>
-            
-            <!-- New slider and text -->
-            <div class="w-full mt-4">
-                <div class="slider-label">Speed: <span id="tts-speed-value">1.0</span></div>
-                <input type="range" id="tts-speed-slider" class="pink-slider" min="0.5" max="2" value="1" step="0.1">
-            </div>
-        </div>
-    </div>
-
     <script>
-        // DOM elements for chatbot
+        // DOM elements
         const chatWindow = document.getElementById('chat-window');
         const chatInput = document.getElementById('chat-input');
         const sendBtn = document.getElementById('send-btn');
-        let lastBotResponse = '';
-        let chatHistory = [];
-
-        // DOM elements for TTS
-        const ttsInput = document.getElementById('tts-input');
-        const ttsPlayBtn = document.getElementById('tts-play-btn');
-        const ttsStopBtn = document.getElementById('tts-stop-btn');
-        const copyLastResponseBtn = document.getElementById('copy-last-response-btn');
-        const ttsSpeedSlider = document.getElementById('tts-speed-slider');
-        const ttsSpeedValue = document.getElementById('tts-speed-value');
-        const epubFileInput = document.getElementById('epub-file-input');
-        const importEpubBtn = document.getElementById('import-epub-btn');
-        const downloadPdfBtn = document.getElementById('download-pdf-btn');
-        const loadingMessage = document.getElementById('loading-message');
         
-        let extractedText = '';
-        let epubFilename = '';
-        let audio = null;
-
         // Helper function to add messages to the chat window
         function addMessage(sender, message, isTyping = false) {
-            console.log(`[Message Added] Sender: ${sender}, Message: "${message}"`);
             const messageWrapper = document.createElement('div');
             messageWrapper.classList.add('flex', 'flex-col', sender === 'user' ? 'items-end' : 'items-start');
 
@@ -317,258 +122,48 @@
             
             messageWrapper.appendChild(messageBubble);
             chatWindow.appendChild(messageWrapper);
-            chatWindow.scrollTop = chatWindow.scrollHeight;
-            return messageBubble;
-        }
-
-        // New function to simulate typing out the response
-        function simulateTyping(text, bubbleElement) {
-            console.log(`[Typing Simulation Started] Response text: "${text.substring(0, 50)}..."`);
-            lastBotResponse = text;
-            let i = 0;
-            const speed = 25;
-            bubbleElement.innerHTML = '';
-
-            function typeWriter() {
-                if (i < text.length) {
-                    const char = text[i];
-                    
-                    if (char === '*') {
-                        let endIndex = text.indexOf('*', i + 1);
-                        if (endIndex !== -1) {
-                            const boldText = text.substring(i + 1, endIndex);
-                            bubbleElement.innerHTML += `<em>${boldText}</em>`;
-                            i = endIndex + 1;
-                        } else {
-                            bubbleElement.innerHTML += char;
-                            i++;
-                        }
-                    } else {
-                        bubbleElement.innerHTML += char;
-                        i++;
-                    }
-
-                    chatWindow.scrollTop = chatWindow.scrollHeight;
-                    setTimeout(typeWriter, speed);
-                } else {
-                     console.log("[Typing Simulation Finished]");
-                }
-            }
-            typeWriter();
+            chatWindow.scrollTop = chatWindow.scrollHeight; // Scroll to the bottom
         }
 
         // Function to send a message to the chatbot API
         async function sendMessage() {
             const userMessage = chatInput.value.trim();
             if (!userMessage) return;
-            
-            console.log(`[User Action] Sending message: "${userMessage}"`);
 
             addMessage('user', userMessage);
-            chatHistory.push({ role: "user", parts: [{ text: userMessage }] });
             chatInput.value = '';
 
-            const typingBubble = addMessage('bot', '', true);
-            console.log("[API Call] Fetching response from Gemini API");
-            
+            addMessage('bot', '', true);
+
             try {
-                const payload = { contents: chatHistory };
-                const apiKey = "";
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-                
-                const response = await fetch(apiUrl, {
+                const response = await fetch('/api', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify({ prompt: userMessage })
                 });
+                const data = await response.json();
                 
-                const result = await response.json();
+                chatWindow.lastChild.remove();
                 
-                typingBubble.classList.remove('typing');
-                
-                if (result.candidates && result.candidates.length > 0 &&
-                    result.candidates[0].content && result.candidates[0].content.parts &&
-                    result.candidates[0].content.parts.length > 0) {
-                    const text = result.candidates[0].content.parts[0].text;
-                    console.log("[API Success] Received response:", text);
-                    simulateTyping(text, typingBubble);
-                    chatHistory.push({ role: "model", parts: [{ text: text }] });
+                if (data.error) {
+                    addMessage('bot', `Error: ${data.error}`);
                 } else {
-                    console.error("[API Error] Unexpected API response structure:", result);
-                    simulateTyping('The AI could not generate a response. Please try again.', typingBubble);
+                    addMessage('bot', data.text);
                 }
             } catch (error) {
-                console.error('[API Call Failed]', error);
-                typingBubble.classList.remove('typing');
-                simulateTyping('Could not connect to the API. Please check your network connection.', typingBubble);
+                console.error('Error:', error);
+                chatWindow.lastChild.remove();
+                addMessage('bot', 'Could not connect to the server.');
             }
         }
         
-        // Event listener for chatbot
+        // Event listeners
         sendBtn.addEventListener('click', sendMessage);
         chatInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 sendMessage();
             }
         });
-
-        // Event listener for TTS Play
-        ttsPlayBtn.addEventListener('click', () => {
-            console.log("[TTS] Play button clicked.");
-            const textToSpeak = ttsInput.value.trim();
-            if (textToSpeak) {
-                console.log(`[TTS] Speaking text: "${textToSpeak.substring(0, 50)}..."`);
-                const speech = new SpeechSynthesisUtterance(textToSpeak);
-                speech.lang = 'en-US';
-                speech.rate = ttsSpeedSlider.value;
-                window.speechSynthesis.speak(speech);
-            } else {
-                 console.warn("[TTS] No text to speak.");
-            }
-        });
-
-        // Event listener for TTS Stop
-        ttsStopBtn.addEventListener('click', () => {
-            console.log("[TTS] Stop button clicked. Cancelling speech.");
-            window.speechSynthesis.cancel();
-        });
-
-        // Event listener for copy button
-        copyLastResponseBtn.addEventListener('click', () => {
-            console.log("[Copy] Transfer AI Response button clicked.");
-            if (lastBotResponse) {
-                const cleanText = lastBotResponse.replace(/\*([^*]+)\*/g, '$1');
-                ttsInput.value = cleanText;
-                console.log("[Copy] Last AI response transferred to TTS input.");
-            } else {
-                 console.warn("[Copy] No last AI response to transfer.");
-            }
-        });
-        
-        // Event listener for the slider
-        ttsSpeedSlider.addEventListener('input', () => {
-            ttsSpeedValue.textContent = ttsSpeedSlider.value;
-            console.log(`[Slider] TTS speed changed to: ${ttsSpeedSlider.value}`);
-        });
-
-        // Event listeners for EPUB import
-        importEpubBtn.addEventListener('click', () => {
-            console.log("[EPUB] Import EPUB button clicked.");
-            epubFileInput.click();
-        });
-
-        // This is the new, self-contained code for handling the EPUB file
-        epubFileInput.addEventListener('change', async (event) => {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            console.log(`[EPUB] File selected: ${file.name}`);
-            loadingMessage.classList.remove('hidden');
-            downloadPdfBtn.classList.add('hidden');
-            ttsInput.value = "Processing EPUB file...";
-
-            try {
-                // Read the EPUB file as a binary string
-                const fileReader = new FileReader();
-                fileReader.onload = async function(event) {
-                    try {
-                        const epubData = event.target.result;
-                        const zip = await JSZip.loadAsync(epubData);
-                        let textContent = '';
-
-                        // Logic to extract text from the XHTML files
-                        const parser = new DOMParser();
-                        const containerXml = await zip.file('META-INF/container.xml').async('string');
-                        const containerDoc = parser.parseFromString(containerXml, 'application/xml');
-                        const opfPath = containerDoc.querySelector('rootfile').getAttribute('full-path');
-
-                        const opfXml = await zip.file(opfPath).async('string');
-                        const opfDoc = parser.parseFromString(opfXml, 'application/xml');
-
-                        const spine = opfDoc.querySelector('spine');
-                        const manifest = opfDoc.querySelector('manifest');
-
-                        const chapterPromises = Array.from(spine.children).map(async (itemRef) => {
-                            const idref = itemRef.getAttribute('idref');
-                            const manifestItem = manifest.querySelector(`item[id="${idref}"]`);
-                            const href = manifestItem.getAttribute('href');
-
-                            const chapterPath = opfPath.substring(0, opfPath.lastIndexOf('/') + 1) + href;
-                            const chapterFile = zip.file(chapterPath);
-                            
-                            if (chapterFile) {
-                                const chapterContent = await chapterFile.async('string');
-                                const chapterDoc = parser.parseFromString(chapterContent, 'application/xhtml+xml');
-                                return chapterDoc.body.textContent || '';
-                            }
-                            return '';
-                        });
-
-                        const textChunks = await Promise.all(chapterPromises);
-                        textContent = textChunks.join('\n\n').trim();
-                        
-                        if (textContent) {
-                            ttsInput.value = textContent;
-                            downloadPdfBtn.classList.remove('hidden');
-                            console.log("[EPUB] Text extracted successfully. Length:", textContent.length);
-                            alert("EPUB text extracted successfully!");
-                        } else {
-                            ttsInput.value = "Could not extract text from EPUB.";
-                            console.error("[EPUB] Extraction failed: No text found.");
-                        }
-                    } catch (error) {
-                        console.error('[EPUB] Extraction error:', error);
-                        ttsInput.value = 'Failed to process EPUB file. Please check the file format.';
-                    } finally {
-                        loadingMessage.classList.add('hidden');
-                    }
-                };
-                fileReader.readAsArrayBuffer(file);
-                
-            } catch (error) {
-                console.error('[EPUB] File reading error:', error);
-                ttsInput.value = 'An error occurred while reading the file.';
-                loadingMessage.classList.add('hidden');
-            }
-        });
-
-        downloadPdfBtn.addEventListener('click', () => {
-            console.log("[PDF] Download button clicked.");
-            if (ttsInput.value) {
-                console.log("[PDF] Creating and downloading PDF.");
-                createAndDownloadPDF(ttsInput.value, epubFileInput.files[0].name);
-            } else {
-                console.warn("[PDF] Cannot download. No text in TTS input.");
-                alert("Please import an EPUB file first.");
-            }
-        });
-        
-        function createAndDownloadPDF(text, filename) {
-            console.log(`[PDF] Creating PDF from text. Filename: ${filename}`);
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-            const pageWidth = doc.internal.pageSize.getWidth();
-            const pageHeight = doc.internal.pageSize.getHeight();
-            const margin = 10;
-            const lineHeight = 7;
-            const lines = doc.splitTextToSize(text, pageWidth - margin * 2);
-            let y = margin;
-
-            doc.setFontSize(12);
-
-            lines.forEach((line) => {
-                if (y + lineHeight > pageHeight - margin) {
-                    doc.addPage();
-                    y = margin;
-                }
-                doc.text(line, margin, y);
-                y += lineHeight;
-            });
-            
-            const pdfFilename = filename.replace('.epub', '.pdf');
-            doc.save(pdfFilename);
-            console.log(`[PDF] Download complete: ${pdfFilename}`);
-        }
     </script>
 </body>
 </html>
