@@ -289,52 +289,19 @@
             }
         });
 
-        // Event listener for TTS Play (OPDATERET TIL AT BRUGE VERCEL API)
-        ttsPlayBtn.addEventListener('click', async () => {
+        // Event listener for TTS Play (GENDANNET TIL BROWSER OPLÆSER)
+        ttsPlayBtn.addEventListener('click', () => {
             const textToSpeak = ttsInput.value.trim();
             if (textToSpeak) {
-                try {
-                    ttsPlayBtn.disabled = true;
-                    ttsStopBtn.disabled = true;
-
-                    const response = await fetch('/api/tts', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ text: textToSpeak })
-                    });
-
-                    if (!response.ok) {
-                        throw new Error('Fejl ved generering af tale.');
-                    }
-
-                    const audioBlob = await response.blob();
-                    const audioUrl = URL.createObjectURL(audioBlob);
-                    const audio = new Audio(audioUrl);
-                    
-                    window.currentAudio = audio;
-                    audio.play();
-
-                    audio.onended = () => {
-                        ttsPlayBtn.disabled = false;
-                        ttsStopBtn.disabled = false;
-                    };
-
-                } catch (error) {
-                    console.error('Fejl ved afspilning af tale:', error);
-                    ttsPlayBtn.disabled = false;
-                    ttsStopBtn.disabled = false;
-                }
+                const speech = new SpeechSynthesisUtterance(textToSpeak);
+                speech.lang = 'da-DK';
+                window.speechSynthesis.speak(speech);
             }
         });
 
-        // Event listener for TTS Stop (OPDATERET TIL AT BRUGE VERCEL API)
+        // Event listener for TTS Stop (GENDANNET TIL BROWSER OPLÆSER)
         ttsStopBtn.addEventListener('click', () => {
-            if (window.currentAudio) {
-                window.currentAudio.pause();
-                window.currentAudio.currentTime = 0;
-                ttsPlayBtn.disabled = false;
-                ttsStopBtn.disabled = false;
-            }
+            window.speechSynthesis.cancel();
         });
 
         // Ny event listener for kopieringsknappen
