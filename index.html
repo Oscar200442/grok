@@ -88,7 +88,7 @@
             margin-bottom: 1rem;
         }
         
-        #send-btn, #copy-last-response-btn, #tts-play-btn, #tts-stop-btn {
+        #send-btn, #copy-last-response-btn, #tts-play-btn, #tts-stop-btn, #import-epub-btn {
             background-color: #ffb6c1;
             color: white;
             border-radius: 2rem;
@@ -98,7 +98,7 @@
             border: none;
         }
 
-        #send-btn:hover, #copy-last-response-btn:hover, #tts-play-btn:hover, #tts-stop-btn:hover {
+        #send-btn:hover, #copy-last-response-btn:hover, #tts-play-btn:hover, #tts-stop-btn:hover, #import-epub-btn:hover {
             background-color: #ff91a4;
         }
         
@@ -166,6 +166,7 @@
         }
 
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.93/dist/epub.min.js"></script>
 </head>
 <body class="flex justify-start min-h-screen p-4 sm:p-12">
 
@@ -199,6 +200,12 @@
         
         <div class="tts-controls">
             <textarea id="tts-input" placeholder="Write your text here"></textarea>
+            
+            <input type="file" id="epub-file-input" class="hidden" accept=".epub">
+            <button id="import-epub-btn" class="mt-4">
+                <i class="fas fa-file-import"></i> Import EPUB
+            </button>
+
             <div class="tts-buttons">
                 <button id="tts-play-btn">
                     <i class="fas fa-play"></i> Play
@@ -207,6 +214,7 @@
                     <i class="fas fa-stop"></i> Stop
                 </button>
             </div>
+            
             <div class="w-full mt-4">
                 <div class="slider-label">Speed: <span id="tts-speed-value">1.0</span></div>
                 <input type="range" id="tts-speed-slider" class="pink-slider" min="0.5" max="2" value="1" step="0.1">
@@ -228,6 +236,8 @@
         const copyLastResponseBtn = document.getElementById('copy-last-response-btn');
         const ttsSpeedSlider = document.getElementById('tts-speed-slider');
         const ttsSpeedValue = document.getElementById('tts-speed-value');
+        const epubFileInput = document.getElementById('epub-file-input');
+        const importEpubBtn = document.getElementById('import-epub-btn');
         
         // Helper function to add messages to the chat window
         function addMessage(sender, message, isTyping = false) {
@@ -337,7 +347,7 @@
             const textToSpeak = ttsInput.value.trim();
             if (textToSpeak) {
                 const speech = new SpeechSynthesisUtterance(textToSpeak);
-                speech.lang = 'en-US'; // Sætter sproget til engelsk (USA)
+                speech.lang = 'en-US';
                 speech.rate = ttsSpeedSlider.value;
                 window.speechSynthesis.speak(speech);
             }
@@ -359,6 +369,30 @@
         // Event listener for the slider
         ttsSpeedSlider.addEventListener('input', () => {
             ttsSpeedValue.textContent = ttsSpeedSlider.value;
+        });
+
+        // Event listeners for EPUB import
+        importEpubBtn.addEventListener('click', () => {
+            epubFileInput.click();
+        });
+
+        epubFileInput.addEventListener('change', async (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    const book = e.target.result;
+                    const epub = new ePub(book);
+
+                    epub.ready.then(() => {
+                        epub.flow.on('rendered', (section) => {
+                            const text = section.contents.extract();
+                            ttsInput.value = text.trim();
+                        });
+                    });
+                };
+                reader.readAsArrayBuffer(file);
+            }
         });
     </script>
 </body>
