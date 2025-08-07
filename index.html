@@ -69,7 +69,7 @@
                 <label for="autoplay-checkbox" class="text-sm text-gray-700">Auto-play</label>
             </div>
             
-            <button id="speak-btn" class="p-3 bg-gray-200 text-gray-600 rounded-xl hover:bg-gray-300 transition-colors" title="Play latest response">
+            <button id="speak-btn" class="p-3 bg-gray-200 text-gray-600 rounded-xl hover:bg-gray-300 transition-colors" title="Play latest response" disabled>
                 <span id="speak-icon" class="fas fa-volume-up"></span>
             </button>
             <button id="send-btn" class="p-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors">
@@ -162,7 +162,10 @@
 
         // Function to stream and play audio from the API
         async function speakResponse() {
-            if (!lastBotResponse) return;
+            if (!lastBotResponse) {
+                console.warn('No text to speak. Waiting for a bot response.');
+                return;
+            }
 
             // If we are already speaking, stop playback instead
             if (isSpeaking) {
@@ -237,6 +240,10 @@
             const userMessage = chatInput.value.trim();
             if (!userMessage) return;
 
+            // Before sending, disable the speak button and clear any previous bot response
+            speakBtn.disabled = true;
+            lastBotResponse = '';
+
             addMessage('user', userMessage);
             chatInput.value = '';
 
@@ -254,8 +261,11 @@
                 
                 if (data.error) {
                     addMessage('bot', `Error: ${data.error}`);
+                    speakBtn.disabled = true;
                 } else {
                     addMessage('bot', data.text);
+                    // On a successful response, enable the speak button
+                    speakBtn.disabled = false;
                     if (autoplayCheckbox.checked) {
                         speakResponse();
                     }
@@ -264,6 +274,7 @@
                 console.error('Error:', error);
                 chatWindow.lastChild.remove();
                 addMessage('bot', 'Could not connect to the server.');
+                speakBtn.disabled = true;
             }
         }
         
