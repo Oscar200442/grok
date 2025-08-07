@@ -130,11 +130,10 @@
             margin-top: 10rem;
         }
         
-        /* Stylering af skyderen */
         .pink-slider {
             width: 100%;
             height: 8px;
-            background: #e9b3bc; /* Lys lyserød baggrund */
+            background: #e9b3bc;
             border-radius: 4px;
             -webkit-appearance: none;
             cursor: pointer;
@@ -145,7 +144,7 @@
             -webkit-appearance: none;
             width: 20px;
             height: 20px;
-            background: #ffb6c1; /* Pastel-lyserød knap */
+            background: #ffb6c1;
             border-radius: 50%;
             border: 2px solid #808080;
             cursor: pointer;
@@ -195,7 +194,7 @@
 
     <div class="tts-container h-[90vh] bg-[#808080] rounded-2xl flex flex-col">
         <div id="tts-title" class="p-6 text-center text-4xl font-normal text-white rounded-t-2xl title-font">
-            Text to voice
+            Text to Voice
         </div>
         
         <div class="tts-controls">
@@ -229,7 +228,7 @@
         const copyLastResponseBtn = document.getElementById('copy-last-response-btn');
         const ttsSpeedSlider = document.getElementById('tts-speed-slider');
         const ttsSpeedValue = document.getElementById('tts-speed-value');
-
+        
         // Helper function to add messages to the chat window
         function addMessage(sender, message, isTyping = false) {
             const messageWrapper = document.createElement('div');
@@ -333,23 +332,23 @@
             }
         });
 
-        // Event listener for TTS Play (GENDANNET TIL BROWSER OPLÆSER)
+        // Event listener for TTS Play
         ttsPlayBtn.addEventListener('click', () => {
             const textToSpeak = ttsInput.value.trim();
             if (textToSpeak) {
                 const speech = new SpeechSynthesisUtterance(textToSpeak);
-                speech.lang = 'da-DK';
-                speech.rate = ttsSpeedSlider.value; // Anvender hastigheden fra skyderen
+                speech.lang = 'en-US'; // Sætter sproget til engelsk (USA)
+                speech.rate = ttsSpeedSlider.value;
                 window.speechSynthesis.speak(speech);
             }
         });
 
-        // Event listener for TTS Stop (GENDANNET TIL BROWSER OPLÆSER)
+        // Event listener for TTS Stop
         ttsStopBtn.addEventListener('click', () => {
             window.speechSynthesis.cancel();
         });
 
-        // Ny event listener for kopieringsknappen
+        // Event listener for copy button
         copyLastResponseBtn.addEventListener('click', () => {
             if (lastBotResponse) {
                 const cleanText = lastBotResponse.replace(/\*([^*]+)\*/g, '$1');
@@ -357,7 +356,7 @@
             }
         });
         
-        // Event listener for skyderen
+        // Event listener for the slider
         ttsSpeedSlider.addEventListener('input', () => {
             ttsSpeedValue.textContent = ttsSpeedSlider.value;
         });
