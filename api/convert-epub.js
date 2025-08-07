@@ -1,10 +1,11 @@
-import { createReadStream, promises as fs } from 'fs';
+import { promises as fs } from 'fs';
 import os from 'os';
 import path from 'path';
 import JSZip from 'jszip';
 import { XMLParser } from 'fast-xml-parser';
-import PDFDocument from 'pdfkit';
-import busboy from 'busboy';
+import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
+import fontkit from '@pdf-lib/fontkit';
+import formidable from 'formidable';
 
 export const config = {
   api: {
@@ -12,62 +13,24 @@ export const config = {
   },
 };
 
-const getTempDir = () => os.tmpdir();
-
-const parseFormData = (req) => new Promise((resolve, reject) => {
-  const bb = busboy({ headers: req.headers });
-  const files = {};
-  
-  bb.on('file', (name, file, info) => {
-    const { filename, encoding, mimeType } = info;
-    const chunks = [];
-    file.on('data', (chunk) => {
-      chunks.push(chunk);
-    });
-    file.on('end', () => {
-      files[name] = {
-        name: filename,
-        data: Buffer.concat(chunks),
-        mimeType
-      };
-    });
-  });
-  
-  bb.on('close', () => {
-    resolve(files);
-  });
-  
-  bb.on('error', (err) => {
-    reject(err);
-  });
-
-  req.pipe(bb);
-});
-
-const extractTextFromEpub = async (epubFilePath) => {
+const extractTextFromEpub = async (epubData) => {
   try {
-    const fileContent = await fs.readFile(epubFilePath);
-    const zip = await JSZip.loadAsync(fileContent);
+    const zip = await JSZip.loadAsync(epubData);
     const parser = new XMLParser({ ignoreAttributes: false });
-
     let textContent = '';
-    
-    // Find the container.xml file
+
     const containerXmlFile = zip.file('META-INF/container.xml');
     if (!containerXmlFile) {
       throw new Error('container.xml not found in EPUB.');
     }
-    const containerXml = await containerXmlFile.async('string');
-    const container = parser.parse(containerXml);
+    const container = parser.parse(await containerXmlFile.async('string'));
     const opfPath = container.container.rootfiles.rootfile['full-path'];
 
-    // Find the OPF file
     const opfFile = zip.file(opfPath);
     if (!opfFile) {
       throw new Error('OPF file not found in EPUB.');
     }
-    const opfXml = await opfFile.async('string');
-    const opf = parser.parse(opfXml);
+    const opf = parser.parse(await opfFile.async('string'));
 
     const manifestItems = opf.package.manifest.item;
     const spineItems = opf.package.spine.itemref;
@@ -76,11 +39,14 @@ const extractTextFromEpub = async (epubFilePath) => {
       throw new Error('Spine or manifest not found.');
     }
 
-    const getManifestItemById = (id) => Array.isArray(manifestItems) 
-      ? manifestItems.find(item => item['@_id'] === id) 
-      : (manifestItems['@_id'] === id ? manifestItems : null);
+    const getManifestItemById = (id) =>
+      Array.isArray(manifestItems)
+        ? manifestItems.find((item) => item['@_id'] === id)
+        : manifestItems['@_id'] === id
+        ? manifestItems
+        : null;
 
-    for (const itemRef of (Array.isArray(spineItems) ? spineItems : [spineItems])) {
+    for (const itemRef of Array.isArray(spineItems) ? spineItems : [spineItems]) {
       const manifestItem = getManifestItemById(itemRef['@_idref']);
       if (manifestItem) {
         const itemPath = path.join(path.dirname(opfPath), manifestItem['@_href']);
@@ -94,7 +60,6 @@ const extractTextFromEpub = async (epubFilePath) => {
         }
       }
     }
-
     return textContent;
   } catch (error) {
     console.error('Extraction error:', error);
@@ -107,57 +72,67 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  let tempDir = null;
+  const form = formidable({ multiples: false });
+  const [fields, files] = await new Promise((resolve, reject) => {
+    form.parse(req, (err, fields, files) => {
+      if (err) return reject(err);
+      resolve([fields, files]);
+    });
+  });
+
+  const epubFile = files.epubFile?.[0];
+  if (!epubFile || epubFile.mimetype !== 'application/epub+zip') {
+    return res.status(400).send('Invalid or no EPUB file found in request');
+  }
 
   try {
-    const files = await parseFormData(req);
-    const epubFile = files.epubFile;
-
-    if (!epubFile || epubFile.mimeType !== 'application/epub+zip') {
-      return res.status(400).send('Invalid or no EPUB file found in request');
-    }
-
-    tempDir = await fs.mkdtemp(path.join(getTempDir(), 'epub-'));
-    const epubPath = path.join(tempDir, epubFile.name);
-    await fs.writeFile(epubPath, epubFile.data);
-
-    const extractedText = await extractTextFromEpub(epubPath);
-
+    const epubData = await fs.readFile(epubFile.filepath);
+    const extractedText = await extractTextFromEpub(epubData);
+    
     if (!extractedText) {
       return res.status(500).send('Could not extract text from EPUB.');
     }
-    
-    // PDF Generation
-    const doc = new PDFDocument();
-    const buffers = [];
-    doc.on('data', buffers.push.bind(buffers));
-    doc.on('end', () => {
-      const pdfBuffer = Buffer.concat(buffers);
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename="${epubFile.name.replace('.epub', '.pdf')}"`);
-      res.status(200).send(pdfBuffer);
-    });
 
-    // Write text to PDF
-    const textLines = extractedText.split('\n');
-    let isFirstLine = true;
-    for (const line of textLines) {
-      if (isFirstLine) {
-        doc.text(line, { align: 'justify' });
-        isFirstLine = false;
-      } else {
-        doc.text('\n' + line, { align: 'justify' });
+    const pdfDoc = await PDFDocument.create();
+    pdfDoc.registerFontkit(fontkit);
+    const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+
+    const pageSize = pdfDoc.getPageSizes()[0];
+    const margin = 50;
+    const pageWidth = pageSize.width - 2 * margin;
+    const lineHeight = 14;
+
+    const lines = extractedText.split('\n');
+    let page = pdfDoc.addPage();
+    let y = pageSize.height - margin;
+
+    for (const line of lines) {
+      const textWidth = helveticaFont.widthOfTextAtSize(line, 12);
+      const textLines = textWidth > pageWidth ? line.match(new RegExp(`.{1,${Math.floor(pageWidth / (12 / helveticaFont.widthOfTextAtSize('a', 12)))}}`, 'g')) : [line];
+
+      for (const textLine of textLines) {
+        if (y < margin) {
+          page = pdfDoc.addPage();
+          y = pageSize.height - margin;
+        }
+        page.drawText(textLine, {
+          x: margin,
+          y: y,
+          size: 12,
+          font: helveticaFont,
+          color: rgb(0, 0, 0),
+        });
+        y -= lineHeight;
       }
     }
 
-    doc.end();
+    const pdfBytes = await pdfDoc.save();
 
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${epubFile.originalFilename.replace('.epub', '.pdf')}"`);
+    return res.status(200).send(Buffer.from(pdfBytes));
   } catch (error) {
     console.error('Error during EPUB to PDF conversion:', error);
-    res.status(500).send('An error occurred during conversion.');
-  } finally {
-    if (tempDir) {
-      await fs.rm(tempDir, { recursive: true, force: true });
-    }
+    return res.status(500).send('An error occurred during conversion.');
   }
 }
