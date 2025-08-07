@@ -19,7 +19,7 @@
             align-items: flex-start;
             min-height: 100vh;
             padding: 4rem 12rem;
-            gap: 4rem;
+            gap: 12rem; /* Øget mellemrummet mellem boksene for mere afstand */
         }
         .chat-container, .tts-container {
             width: 95%;
@@ -70,7 +70,7 @@
             flex-grow: 1;
             display: flex;
             flex-direction: column;
-            justify-content: flex-end; /* Ændret til at placere indholdet i bunden af containeren */
+            justify-content: flex-end;
             align-items: center;
             padding: 2rem;
         }
@@ -102,6 +102,26 @@
         #tts-play-btn:hover {
             background-color: #6c6c6c;
         }
+
+        /* Stil for den nye "Kopiér" knap */
+        .copy-button-container {
+            align-self: center;
+            margin-top: 10rem;
+        }
+        #copy-last-response-btn {
+            padding: 0.75rem 1.5rem;
+            background-color: #1d4ed8;
+            color: white;
+            border-radius: 2rem;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            white-space: nowrap; /* Forhindrer teksten i at blive brudt på flere linjer */
+            border: none;
+        }
+        #copy-last-response-btn:hover {
+            background-color: #1e40af;
+        }
     </style>
 </head>
 <body class="flex justify-start min-h-screen p-4 sm:p-12">
@@ -122,6 +142,13 @@
         </div>
     </div>
 
+    <div class="copy-button-container flex flex-col items-center justify-center h-[90vh]">
+        <button id="copy-last-response-btn" class="flex items-center space-x-2">
+            <i class="fas fa-copy"></i>
+            <span>Kopiér AI-svar</span>
+        </button>
+    </div>
+
     <div class="tts-container h-[90vh] bg-[#808080] rounded-2xl flex flex-col">
         <div id="tts-title" class="p-6 text-center text-4xl font-normal text-white rounded-t-2xl title-font">
             Text to voice
@@ -140,10 +167,12 @@
         const chatWindow = document.getElementById('chat-window');
         const chatInput = document.getElementById('chat-input');
         const sendBtn = document.getElementById('send-btn');
+        let lastBotResponse = ''; // Variabel til at gemme det seneste AI-svar
 
         // DOM elements for TTS
         const ttsInput = document.getElementById('tts-input');
         const ttsPlayBtn = document.getElementById('tts-play-btn');
+        const copyLastResponseBtn = document.getElementById('copy-last-response-btn');
         
         // Helper function to add messages to the chat window
         function addMessage(sender, message, isTyping = false) {
@@ -177,6 +206,7 @@
 
         // New function to simulate typing out the response
         function simulateTyping(text, bubbleElement) {
+            lastBotResponse = text; // Opdater variablen med det fulde svar
             let i = 0;
             const speed = 25;
             bubbleElement.innerHTML = '';
@@ -256,6 +286,15 @@
                 const speech = new SpeechSynthesisUtterance(textToSpeak);
                 speech.lang = 'da-DK';
                 window.speechSynthesis.speak(speech);
+            }
+        });
+
+        // Ny event listener for kopieringsknappen
+        copyLastResponseBtn.addEventListener('click', () => {
+            if (lastBotResponse) {
+                // Fjerner markdown-tegn (</em>) før indsættelse
+                const cleanText = lastBotResponse.replace(/<[^>]*>/g, '');
+                ttsInput.value = cleanText;
             }
         });
     </script>
