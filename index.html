@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chatbot with TTS</title>
+    <title>Functional Chat App</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -334,9 +334,6 @@
         const chatInput = document.getElementById('chat-input');
         const sendBtn = document.getElementById('send-btn');
         let lastBotResponse = '';
-        let chatHistory = [];
-        let audioContext = null;
-        let audioSource = null;
 
         // DOM elements for TTS
         const ttsInput = document.getElementById('tts-input');
@@ -390,7 +387,6 @@
                 messageBubble.innerText = "The AI is thinking...";
             } else {
                 const convertMarkdown = (text) => {
-                    // This is a simple conversion. A full markdown parser would be more complex.
                     return text.replace(/\*(.*?)\*/g, '<em>$1</em>');
                 };
                 messageBubble.innerHTML = convertMarkdown(message);
@@ -426,7 +422,6 @@
                         bubbleElement.innerHTML += char;
                         i++;
                     }
-
                     chatWindow.scrollTop = chatWindow.scrollHeight;
                     setTimeout(typeWriter, speed);
                 }
@@ -482,28 +477,6 @@
                 view.setUint8(offset + i, string.charCodeAt(i));
             }
         }
-
-        // Function to play audio from a base64 string
-        async function playAudio(base64Data, mimeType) {
-            if (audioContext) {
-                audioContext.close();
-            }
-            audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            const sampleRate = parseInt(mimeType.match(/rate=(\d+)/)[1], 10);
-            const pcmData = base64ToArrayBuffer(base64Data);
-            const pcm16 = new Int16Array(pcmData);
-            const wavBlob = pcmToWav(pcm16, sampleRate);
-            const audioUrl = URL.createObjectURL(wavBlob);
-            const audio = new Audio(audioUrl);
-            audio.play();
-
-            // Handle the case where the TTS API response might be empty or invalid.
-            // In a real application, you'd add more robust error handling here.
-            audio.addEventListener('error', (e) => {
-                console.error("Error playing audio:", e);
-                showModal("There was an error playing the audio. The response might have been invalid.");
-            });
-        }
         
         // Function to send a message to the chatbot (TTS enabled)
         async function sendMessage() {
@@ -525,52 +498,13 @@
                     "I'm sorry, I cannot fulfill that request."
                 ];
                 const botResponse = responses[Math.floor(Math.random() * responses.length)];
-
-                // Prepare payload for TTS API call
-                const payload = {
-                    contents: [{
-                        parts: [{ text: botResponse }]
-                    }],
-                    generationConfig: {
-                        responseModalities: ["AUDIO"],
-                        speechConfig: {
-                            voiceConfig: {
-                                prebuiltVoiceConfig: { voiceName: "Puck" }
-                            }
-                        }
-                    },
-                    model: "gemini-2.5-flash-preview-tts"
-                };
-
-                const apiKey = "";
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
-
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
-                const result = await response.json();
-
+                
                 typingBubble.classList.remove('typing');
                 simulateTyping(botResponse, typingBubble);
-
-                const part = result?.candidates?.[0]?.content?.parts?.[0];
-                const audioData = part?.inlineData?.data;
-                const mimeType = part?.inlineData?.mimeType;
-
-                if (audioData && mimeType && mimeType.startsWith("audio/")) {
-                    playAudio(audioData, mimeType);
-                } else {
-                    console.error('TTS API response was not in the expected format:', result);
-                    showModal("Could not get a voice response. Please try again.");
-                }
-
             } catch (error) {
-                console.error('API Call Failed:', error);
+                console.error('An unexpected error occurred:', error);
                 typingBubble.classList.remove('typing');
-                simulateTyping('Could not connect to the API. Please check your network connection.', typingBubble);
+                simulateTyping('An unexpected error occurred.', typingBubble);
             }
         }
 
