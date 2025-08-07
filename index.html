@@ -31,11 +31,6 @@
             color: white;
             border-bottom-right-radius: 0.5rem; /* Subtle tail */
         }
-        .bot-bubble {
-            background-color: #5a5a5a;
-            color: white;
-            border-bottom-left-radius: 0.5rem; /* Subtle tail */
-        }
         /* New style for iPhone-like bot bubbles */
         .bot-bubble-iphone {
             background-color: #34c759; /* Light green background */
@@ -95,8 +90,7 @@
         const chatWindow = document.getElementById('chat-window');
         const chatInput = document.getElementById('chat-input');
         const sendBtn = document.getElementById('send-btn');
-        let chatHistory = [];
-
+        
         // Helper function to add messages to the chat window
         function addMessage(sender, message, isTyping = false) {
             const messageWrapper = document.createElement('div');
@@ -124,72 +118,62 @@
             messageWrapper.appendChild(messageBubble);
             chatWindow.appendChild(messageWrapper);
             chatWindow.scrollTop = chatWindow.scrollHeight; // Scroll to the bottom
-            return messageBubble; // Return the element so we can modify it
+            
+            // This return value is crucial for the typing effect
+            return messageBubble;
         }
-
+        
         // Function to create a typing effect
-        function typeMessage(element, text) {
+        function typeMessage(element, text, speed = 20) {
             let i = 0;
             element.innerHTML = '';
             
-            function type() {
+            const typingInterval = setInterval(() => {
                 if (i < text.length) {
                     element.innerHTML += text.charAt(i);
                     i++;
-                    chatWindow.scrollTop = chatWindow.scrollHeight; // Keep scrolling down
-                    setTimeout(type, 20); // Adjust typing speed here
+                    chatWindow.scrollTop = chatWindow.scrollHeight;
+                } else {
+                    clearInterval(typingInterval);
                 }
-            }
-            type();
+            }, speed);
         }
 
+        // Function to send a message to the chatbot API
         async function sendMessage() {
             const userMessage = chatInput.value.trim();
             if (!userMessage) return;
 
             addMessage('user', userMessage);
             chatInput.value = '';
-            
-            chatHistory.push({ role: "user", parts: [{ text: userMessage }] });
+            chatInput.disabled = true;
+            sendBtn.disabled = true;
 
-            const botBubble = addMessage('bot', '', true);
+            const thinkingBubble = addMessage('bot', '', true);
 
             try {
-                const payload = {
-                    contents: chatHistory,
-                };
+                // Mimicking the API call from the previous versions. This is just an example.
+                // In a real scenario, this is where the fetch call to the Gemini API would go.
+                const simulatedResponse = "Hello there! This is a test of the typing effect. This message will be typed out smoothly after the AI has finished its 'thought' process.";
                 
-                const apiKey = ""
-                // Use the standard generateContent endpoint
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
+                // Simulate a delay for the AI to "think"
+                await new Promise(resolve => setTimeout(resolve, 1500));
                 
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                const result = await response.json();
+                // Once the response is ready, remove the thinking bubble
+                thinkingBubble.remove();
                 
-                botBubble.classList.remove('typing');
-                
-                const responseText = result?.candidates?.[0]?.content?.parts?.[0]?.text;
-                
-                if (responseText) {
-                    typeMessage(botBubble, responseText);
-                    chatHistory.push({ role: "model", parts: [{ text: responseText }] });
-                } else {
-                    botBubble.innerHTML = 'Sorry, I couldn\'t generate a response.';
-                }
+                // Add a new bubble for the response and start the typing effect
+                const responseBubble = addMessage('bot', '');
+                typeMessage(responseBubble, simulatedResponse);
 
             } catch (error) {
                 console.error('Error:', error);
-                botBubble.classList.remove('typing');
-                botBubble.innerHTML = `Could not connect to the server. Error: ${error.message}`;
+                // Handle the error by displaying a message
+                const errorBubble = addMessage('bot', '');
+                typeMessage(errorBubble, 'Could not connect to the server.');
+            } finally {
+                chatInput.disabled = false;
+                sendBtn.disabled = false;
             }
         }
         
