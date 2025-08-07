@@ -105,7 +105,11 @@
                 messageBubble.classList.add('typing');
                 messageBubble.innerText = "AI's thinking...";
             } else {
-                messageBubble.innerText = message;
+                // Function to convert simple Markdown (e.g., *text* to <em>text</em>)
+                const convertMarkdown = (text) => {
+                    return text.replace(/\*(.*?)\*/g, '<em>$1</em>');
+                };
+                messageBubble.innerHTML = convertMarkdown(message);
             }
             
             messageWrapper.appendChild(messageBubble);
