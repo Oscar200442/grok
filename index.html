@@ -15,10 +15,10 @@
             font-family: 'Inter', sans-serif;
             background-color: #808080;
             display: flex;
-            justify-content: center; /* Centrerer boksene vandret */
+            justify-content: flex-end; /* Placerer indholdet til højre */
             align-items: flex-start;
             min-height: 100vh;
-            padding: 4rem 2rem; /* Juster padding for bedre central placering */
+            padding: 4rem 12rem; /* Øger padding på venstre side for at skubbe indholdet til højre */
             gap: 4rem; /* Øger mellemrummet mellem boksene */
         }
         .chat-container, .tts-container {
@@ -130,7 +130,7 @@
         <div class="tts-controls">
             <textarea id="tts-input" placeholder="Skriv din tekst her..."></textarea>
             <button id="tts-play-btn">
-                <i class="fas fa-play"></i> Afspil
+                <i class="fas fa-play"></i> Play
             </button>
         </div>
     </div>
