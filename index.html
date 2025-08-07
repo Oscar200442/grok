@@ -90,8 +90,8 @@
         
         /* Pastel-lyserød farve for knapper */
         .pink-button {
-            background-color: #ffb6c1; /* Pastel-lyserød */
-            color: #808080; /* Mørkegrå tekst for kontrast */
+            background-color: #ffb6c1;
+            color: white;
             border-radius: 2rem;
             font-size: 1.25rem;
             cursor: pointer;
@@ -100,38 +100,57 @@
         }
 
         .pink-button:hover {
-            background-color: #ff91a4; /* Mørkere pastel-lyserød ved hover */
+            background-color: #ff91a4;
         }
-
-        #send-btn, #tts-play-btn, #copy-last-response-btn {
+        
+        #send-btn {
+            width: 100%;
             padding: 1rem;
             color: white;
-            font-size: 1.25rem;
-        }
-
-        /* Specifikke stilarter for knapperne */
-        #send-btn {
             background-color: #ffb6c1;
-            color: white;
+            border-radius: 2rem;
+            font-size: 1.25rem;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            border: none;
         }
         #send-btn:hover {
             background-color: #ff91a4;
         }
+
         #tts-play-btn {
+            width: 100%;
+            padding: 1rem;
             background-color: #ffb6c1;
             color: white;
+            border-radius: 2rem;
+            font-size: 1.25rem;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            border: none;
         }
         #tts-play-btn:hover {
             background-color: #ff91a4;
         }
+
         #copy-last-response-btn {
             padding: 0.75rem 1.5rem;
             background-color: #ffb6c1;
             color: white;
+            border-radius: 2rem;
             font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            border: none;
+            white-space: nowrap;
         }
         #copy-last-response-btn:hover {
             background-color: #ff91a4;
+        }
+        
+        .copy-button-container {
+            align-self: center;
+            margin-top: 10rem;
         }
 
     </style>
@@ -155,9 +174,9 @@
     </div>
 
     <div class="copy-button-container flex flex-col items-center justify-center h-[90vh]">
-        <button id="copy-last-response-btn" class="flex items-center space-x-2 pink-button">
-            <i class="fas fa-copy"></i>
-            <span>Copy AI response</span>
+        <button id="copy-last-response-btn" class="flex items-center space-x-2">
+            <i class="fas fa-arrow-right"></i>
+            <span>Transfer AI Response</span>
         </button>
     </div>
 
@@ -167,8 +186,8 @@
         </div>
         
         <div class="tts-controls">
-            <textarea id="tts-input" placeholder="Skriv din tekst her..."></textarea>
-            <button id="tts-play-btn" class="pink-button">
+            <textarea id="tts-input" placeholder="Write your text here"></textarea>
+            <button id="tts-play-btn">
                 <i class="fas fa-play"></i> Play
             </button>
         </div>
@@ -179,7 +198,7 @@
         const chatWindow = document.getElementById('chat-window');
         const chatInput = document.getElementById('chat-input');
         const sendBtn = document.getElementById('send-btn');
-        let lastBotResponse = ''; // Variabel til at gemme det seneste AI-svar
+        let lastBotResponse = '';
 
         // DOM elements for TTS
         const ttsInput = document.getElementById('tts-input');
@@ -218,7 +237,7 @@
 
         // New function to simulate typing out the response
         function simulateTyping(text, bubbleElement) {
-            lastBotResponse = text; // Opdater variablen med det fulde svar
+            lastBotResponse = text;
             let i = 0;
             const speed = 25;
             bubbleElement.innerHTML = '';
