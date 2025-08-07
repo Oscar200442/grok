@@ -90,7 +90,8 @@
         const chatWindow = document.getElementById('chat-window');
         const chatInput = document.getElementById('chat-input');
         const sendBtn = document.getElementById('send-btn');
-        
+        let chatHistory = [];
+
         // Helper function to add messages to the chat window
         function addMessage(sender, message, isTyping = false) {
             const messageWrapper = document.createElement('div');
@@ -118,11 +119,9 @@
             messageWrapper.appendChild(messageBubble);
             chatWindow.appendChild(messageWrapper);
             chatWindow.scrollTop = chatWindow.scrollHeight; // Scroll to the bottom
-            
-            // This return value is crucial for the typing effect
-            return messageBubble;
+            return messageBubble; // Return the element so we can modify it
         }
-        
+
         // Function to create a typing effect
         function typeMessage(element, text, speed = 20) {
             let i = 0;
@@ -132,7 +131,7 @@
                 if (i < text.length) {
                     element.innerHTML += text.charAt(i);
                     i++;
-                    chatWindow.scrollTop = chatWindow.scrollHeight;
+                    chatWindow.scrollTop = chatWindow.scrollHeight; // Keep scrolling down
                 } else {
                     clearInterval(typingInterval);
                 }
@@ -148,23 +147,46 @@
             chatInput.value = '';
             chatInput.disabled = true;
             sendBtn.disabled = true;
+            
+            chatHistory.push({ role: "user", parts: [{ text: userMessage }] });
 
             const thinkingBubble = addMessage('bot', '', true);
 
             try {
-                // Mimicking the API call from the previous versions. This is just an example.
-                // In a real scenario, this is where the fetch call to the Gemini API would go.
-                const simulatedResponse = "Hello there! This is a test of the typing effect. This message will be typed out smoothly after the AI has finished its 'thought' process.";
+                // This is the real API call to the Gemini API
+                const payload = {
+                    contents: chatHistory,
+                };
                 
-                // Simulate a delay for the AI to "think"
-                await new Promise(resolve => setTimeout(resolve, 1500));
+                const apiKey = ""
+                // Use the standard generateContent endpoint
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
                 
                 // Once the response is ready, remove the thinking bubble
                 thinkingBubble.remove();
                 
-                // Add a new bubble for the response and start the typing effect
-                const responseBubble = addMessage('bot', '');
-                typeMessage(responseBubble, simulatedResponse);
+                const responseText = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+                
+                if (responseText) {
+                    // Add a new bubble for the response and start the typing effect
+                    const responseBubble = addMessage('bot', '');
+                    typeMessage(responseBubble, responseText);
+                    chatHistory.push({ role: "model", parts: [{ text: responseText }] });
+                } else {
+                    addMessage('bot', 'Sorry, I couldn\'t generate a response.');
+                }
 
             } catch (error) {
                 console.error('Error:', error);
