@@ -19,7 +19,7 @@
             align-items: flex-start;
             min-height: 100vh;
             padding: 4rem 12rem;
-            gap: 12rem; /* Øget mellemrummet mellem boksene for mere afstand */
+            gap: 12rem;
         }
         .chat-container, .tts-container {
             width: 95%;
@@ -88,40 +88,52 @@
             margin-bottom: 1rem;
         }
         
-        #tts-play-btn {
-            width: 100%;
-            padding: 1rem;
-            background-color: #5a5a5a;
-            color: white;
+        /* Pastel-lyserød farve for knapper */
+        .pink-button {
+            background-color: #ffb6c1; /* Pastel-lyserød */
+            color: #808080; /* Mørkegrå tekst for kontrast */
             border-radius: 2rem;
             font-size: 1.25rem;
             cursor: pointer;
             transition: background-color 0.3s;
-        }
-        
-        #tts-play-btn:hover {
-            background-color: #6c6c6c;
+            border: none;
         }
 
-        /* Stil for den nye "Kopiér" knap */
-        .copy-button-container {
-            align-self: center;
-            margin-top: 10rem;
+        .pink-button:hover {
+            background-color: #ff91a4; /* Mørkere pastel-lyserød ved hover */
+        }
+
+        #send-btn, #tts-play-btn, #copy-last-response-btn {
+            padding: 1rem;
+            color: white;
+            font-size: 1.25rem;
+        }
+
+        /* Specifikke stilarter for knapperne */
+        #send-btn {
+            background-color: #ffb6c1;
+            color: white;
+        }
+        #send-btn:hover {
+            background-color: #ff91a4;
+        }
+        #tts-play-btn {
+            background-color: #ffb6c1;
+            color: white;
+        }
+        #tts-play-btn:hover {
+            background-color: #ff91a4;
         }
         #copy-last-response-btn {
             padding: 0.75rem 1.5rem;
-            background-color: #1d4ed8;
+            background-color: #ffb6c1;
             color: white;
-            border-radius: 2rem;
             font-size: 1rem;
-            cursor: pointer;
-            transition: background-color 0.3s;
-            white-space: nowrap; /* Forhindrer teksten i at blive brudt på flere linjer */
-            border: none;
         }
         #copy-last-response-btn:hover {
-            background-color: #1e40af;
+            background-color: #ff91a4;
         }
+
     </style>
 </head>
 <body class="flex justify-start min-h-screen p-4 sm:p-12">
@@ -143,9 +155,9 @@
     </div>
 
     <div class="copy-button-container flex flex-col items-center justify-center h-[90vh]">
-        <button id="copy-last-response-btn" class="flex items-center space-x-2">
+        <button id="copy-last-response-btn" class="flex items-center space-x-2 pink-button">
             <i class="fas fa-copy"></i>
-            <span>Kopiér AI-svar</span>
+            <span>Copy AI response</span>
         </button>
     </div>
 
@@ -156,7 +168,7 @@
         
         <div class="tts-controls">
             <textarea id="tts-input" placeholder="Skriv din tekst her..."></textarea>
-            <button id="tts-play-btn">
+            <button id="tts-play-btn" class="pink-button">
                 <i class="fas fa-play"></i> Play
             </button>
         </div>
@@ -292,8 +304,7 @@
         // Ny event listener for kopieringsknappen
         copyLastResponseBtn.addEventListener('click', () => {
             if (lastBotResponse) {
-                // Fjerner markdown-tegn (</em>) før indsættelse
-                const cleanText = lastBotResponse.replace(/<[^>]*>/g, '');
+                const cleanText = lastBotResponse.replace(/\*([^*]+)\*/g, '$1');
                 ttsInput.value = cleanText;
             }
         });
