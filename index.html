@@ -127,26 +127,20 @@
             return messageBubble; // Return the element so we can modify it
         }
 
-        async function streamResponse(response, element) {
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder("utf-8");
-            let fullText = '';
+        // Function to create a typing effect
+        function typeMessage(element, text) {
+            let i = 0;
+            element.innerHTML = '';
             
-            // Loop over the stream and read chunks
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-
-                const text = decoder.decode(value);
-                const json = JSON.parse(text);
-                const content = json.candidates[0]?.content?.parts[0]?.text;
-                if (content) {
-                    fullText += content;
-                    element.innerHTML = fullText;
-                    chatWindow.scrollTop = chatWindow.scrollHeight;
+            function type() {
+                if (i < text.length) {
+                    element.innerHTML += text.charAt(i);
+                    i++;
+                    chatWindow.scrollTop = chatWindow.scrollHeight; // Keep scrolling down
+                    setTimeout(type, 20); // Adjust typing speed here
                 }
             }
-            return fullText;
+            type();
         }
 
         async function sendMessage() {
@@ -166,22 +160,36 @@
                 };
                 
                 const apiKey = ""
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:streamGenerateContent?key=${apiKey}`;
+                // Use the standard generateContent endpoint
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
 
                 const response = await fetch(apiUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
 
+                const result = await response.json();
+                
                 botBubble.classList.remove('typing');
-                let fullResponseText = await streamResponse(response, botBubble);
-                chatHistory.push({ role: "model", parts: [{ text: fullResponseText }] });
+                
+                const responseText = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+                
+                if (responseText) {
+                    typeMessage(botBubble, responseText);
+                    chatHistory.push({ role: "model", parts: [{ text: responseText }] });
+                } else {
+                    botBubble.innerHTML = 'Sorry, I couldn\'t generate a response.';
+                }
 
             } catch (error) {
                 console.error('Error:', error);
                 botBubble.classList.remove('typing');
-                botBubble.innerHTML = 'Could not connect to the server.';
+                botBubble.innerHTML = `Could not connect to the server. Error: ${error.message}`;
             }
         }
         
