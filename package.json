@@ -1,0 +1,12 @@
+{
+  "name": "grok-chatbot",
+  "version": "1.0.0",
+  "description": "A simple chatbot using the Grok API.",
+  "main": "api/index.js",
+  "scripts": {
+    "start": "vercel dev"
+  },
+  "dependencies": {
+    "node-fetch": "^2.6.1"
+  }
+}
