@@ -92,7 +92,7 @@
             addMessage('user', userMessage);
             chatInput.value = '';
 
-            addMessage('bot', 'AI tænker...'); // Placeholder for bot response
+            addMessage('bot', 'AI's thinking...'); // Placeholder for bot response
 
             try {
                 // Send the message to your Vercel API
@@ -106,7 +106,7 @@
 
                 const data = await response.json();
                 
-                // Remove the "AI tænker..." placeholder
+                // Remove the "AI's thinking..." placeholder
                 chatWindow.lastChild.remove(); 
                 
                 if (data.error) {
