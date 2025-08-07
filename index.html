@@ -95,8 +95,7 @@
         const chatWindow = document.getElementById('chat-window');
         const chatInput = document.getElementById('chat-input');
         const sendBtn = document.getElementById('send-btn');
-        let chatHistory = [];
-
+        
         // Helper function to add messages to the chat window
         function addMessage(sender, message, isTyping = false) {
             const messageWrapper = document.createElement('div');
@@ -124,64 +123,37 @@
             messageWrapper.appendChild(messageBubble);
             chatWindow.appendChild(messageWrapper);
             chatWindow.scrollTop = chatWindow.scrollHeight; // Scroll to the bottom
-            return messageBubble; // Return the element so we can modify it
         }
 
-        async function streamResponse(response, element) {
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder("utf-8");
-            let fullText = '';
-            
-            // Loop over the stream and read chunks
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-
-                const text = decoder.decode(value);
-                const json = JSON.parse(text);
-                const content = json.candidates[0]?.content?.parts[0]?.text;
-                if (content) {
-                    fullText += content;
-                    element.innerHTML = fullText;
-                    chatWindow.scrollTop = chatWindow.scrollHeight;
-                }
-            }
-            return fullText;
-        }
-
+        // Function to send a message to the chatbot API
         async function sendMessage() {
             const userMessage = chatInput.value.trim();
             if (!userMessage) return;
 
             addMessage('user', userMessage);
             chatInput.value = '';
-            
-            chatHistory.push({ role: "user", parts: [{ text: userMessage }] });
 
-            const botBubble = addMessage('bot', '', true);
+            addMessage('bot', '', true);
 
             try {
-                const payload = {
-                    contents: chatHistory,
-                };
-                
-                const apiKey = ""
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:streamGenerateContent?key=${apiKey}`;
-
-                const response = await fetch(apiUrl, {
+                const response = await fetch('/api', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify({ prompt: userMessage })
                 });
-
-                botBubble.classList.remove('typing');
-                let fullResponseText = await streamResponse(response, botBubble);
-                chatHistory.push({ role: "model", parts: [{ text: fullResponseText }] });
-
+                const data = await response.json();
+                
+                chatWindow.lastChild.remove();
+                
+                if (data.error) {
+                    addMessage('bot', `Error: ${data.error}`);
+                } else {
+                    addMessage('bot', data.text);
+                }
             } catch (error) {
                 console.error('Error:', error);
-                botBubble.classList.remove('typing');
-                botBubble.innerHTML = 'Could not connect to the server.';
+                chatWindow.lastChild.remove();
+                addMessage('bot', 'Could not connect to the server.');
             }
         }
         
