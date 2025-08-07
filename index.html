@@ -254,7 +254,8 @@
         const epubFileInput = document.getElementById('epub-file-input');
         const importEpubBtn = document.getElementById('import-epub-btn');
         const downloadPdfBtn = document.getElementById('download-pdf-btn');
-        
+        let pdfData = null; // Gemmer den genererede PDF-blob
+
         // Helper function to add messages to the chat window
         function addMessage(sender, message, isTyping = false) {
             const messageWrapper = document.createElement('div');
@@ -392,19 +393,18 @@
             epubFileInput.click();
         });
 
-        // Ny funktion til at konvertere EPUB til PDF
         epubFileInput.addEventListener('change', async (event) => {
             const file = event.target.files[0];
             if (file) {
                 ttsInput.value = "Loading EPUB file...";
-                
+                downloadPdfBtn.classList.add('hidden'); // Skjul knappen, mens vi loader
+
                 const reader = new FileReader();
                 reader.onload = async (e) => {
                     const book = e.target.result;
                     const epub = new ePub(book);
                     
                     epub.ready.then(async () => {
-                        const allText = [];
                         const textPromises = epub.spine.items.map(async (item) => {
                             const doc = await item.load();
                             return doc.body.textContent.trim();
@@ -415,18 +415,25 @@
                         
                         ttsInput.value = fullText;
                         
-                        // Vis download knappen
-                        downloadPdfBtn.classList.remove('hidden');
+                        // Gem den fulde tekst, så den kan bruges til PDF-generering
+                        pdfData = {
+                            text: fullText,
+                            filename: file.name
+                        };
                         
-                        // Opret og download PDF-filen
-                        downloadPdfBtn.addEventListener('click', () => {
-                           createAndDownloadPDF(fullText, file.name);
-                        });
-
+                        downloadPdfBtn.classList.remove('hidden');
                         alert("EPUB file imported successfully! You can now download the PDF.");
                     });
                 };
                 reader.readAsArrayBuffer(file);
+            }
+        });
+
+        downloadPdfBtn.addEventListener('click', () => {
+            if (pdfData && pdfData.text) {
+                createAndDownloadPDF(pdfData.text, pdfData.filename);
+            } else {
+                alert("Please import an EPUB file first.");
             }
         });
 
@@ -451,7 +458,6 @@
                 y += lineHeight;
             });
             
-            // Gem PDF'en med et passende filnavn
             const pdfFilename = filename.replace('.epub', '.pdf');
             doc.save(pdfFilename);
         }
