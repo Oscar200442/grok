@@ -16,37 +16,34 @@
             background-color: #808080;
         }
         .chat-container {
-            width: 95%; /* Responsive width for all devices */
-            max-width: 450px; /* Limits the width on larger screens */
+            width: 95%;
+            max-width: 450px;
             background-color: #808080;
             border-radius: 2rem;
         }
         .message-bubble {
-            border-radius: 1.5rem; /* Softer, more rounded corners */
-            padding: 0.5rem 1.25rem; /* Reduced padding for smaller height */
+            border-radius: 1.5rem;
+            padding: 0.5rem 1.25rem;
             max-width: 80%;
         }
         .user-bubble {
             background-color: #1d4ed8;
             color: white;
-            border-bottom-right-radius: 0.5rem; /* Subtle tail */
+            border-bottom-right-radius: 0.5rem;
         }
         .bot-bubble {
             background-color: #5a5a5a;
             color: white;
-            border-bottom-left-radius: 0.5rem; /* Subtle tail */
+            border-bottom-left-radius: 0.5rem;
         }
-        /* New style for iPhone-like bot bubbles */
         .bot-bubble-iphone {
-            background-color: #34c759; /* Light green background */
+            background-color: #34c759;
             color: white;
-            border-bottom-left-radius: 0.5rem; /* Subtle tail */
+            border-bottom-left-radius: 0.5rem;
         }
-        /* Style for placeholder text in the input box */
         #chat-input::placeholder {
             color: #d1d5db;
         }
-        /* Simple typing animation */
         .typing::after {
             overflow: hidden;
             display: inline-block;
@@ -61,7 +58,6 @@
                 width: 1.25em;
             }
         }
-        /* New font for the Oraculum title */
         #oraculum-title {
             font-family: 'Permanent Marker', cursive;
         }
@@ -75,12 +71,9 @@
             Actuary AI
         </div>
 
-        <!-- Chat window -->
         <div id="chat-window" class="flex-grow p-6 overflow-y-auto space-y-4">
-            <!-- Chat messages will appear here -->
-        </div>
+            </div>
 
-        <!-- Input area -->
         <div class="p-4 rounded-b-2xl flex flex-col items-center space-y-2">
             <input type="text" id="chat-input" class="w-full p-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow bg-[#5a5a5a] text-white" placeholder="Type your message...">
             
@@ -114,6 +107,7 @@
                 messageBubble.classList.add('typing');
                 messageBubble.innerText = "The AI is thinking...";
             } else {
+                // This part is no longer used for displaying the final message directly
                 const convertMarkdown = (text) => {
                     return text.replace(/\*(.*?)\*/g, '<em>$1</em>');
                 };
@@ -122,7 +116,41 @@
             
             messageWrapper.appendChild(messageBubble);
             chatWindow.appendChild(messageWrapper);
-            chatWindow.scrollTop = chatWindow.scrollHeight; // Scroll to the bottom
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+            return messageBubble;
+        }
+
+        // New function to simulate typing out the response
+        function simulateTyping(text, bubbleElement) {
+            let i = 0;
+            const speed = 25; // Juster skrivehastigheden (lavere tal er hurtigere)
+            bubbleElement.innerHTML = ''; // Ryd "The AI is thinking..." teksten
+
+            function typeWriter() {
+                if (i < text.length) {
+                    const char = text[i];
+                    
+                    // Simple håndtering af markdown for at undgå at opdele <em> tags
+                    if (char === '*') {
+                        let endIndex = text.indexOf('*', i + 1);
+                        if (endIndex !== -1) {
+                            const boldText = text.substring(i + 1, endIndex);
+                            bubbleElement.innerHTML += `<em>${boldText}</em>`;
+                            i = endIndex + 1;
+                        } else {
+                            bubbleElement.innerHTML += char;
+                            i++;
+                        }
+                    } else {
+                        bubbleElement.innerHTML += char;
+                        i++;
+                    }
+
+                    chatWindow.scrollTop = chatWindow.scrollHeight;
+                    setTimeout(typeWriter, speed);
+                }
+            }
+            typeWriter();
         }
 
         // Function to send a message to the chatbot API
@@ -133,7 +161,7 @@
             addMessage('user', userMessage);
             chatInput.value = '';
 
-            addMessage('bot', '', true);
+            const typingBubble = addMessage('bot', '', true);
 
             try {
                 const response = await fetch('/api', {
@@ -143,17 +171,18 @@
                 });
                 const data = await response.json();
                 
-                chatWindow.lastChild.remove();
+                // Fjern "typing" indikatoren og start skrive-simulationen
+                typingBubble.classList.remove('typing');
                 
                 if (data.error) {
-                    addMessage('bot', `Error: ${data.error}`);
+                    simulateTyping(`Error: ${data.error}`, typingBubble);
                 } else {
-                    addMessage('bot', data.text);
+                    simulateTyping(data.text, typingBubble);
                 }
             } catch (error) {
                 console.error('Error:', error);
-                chatWindow.lastChild.remove();
-                addMessage('bot', 'Could not connect to the server.');
+                typingBubble.classList.remove('typing');
+                simulateTyping('Could not connect to the server.', typingBubble);
             }
         }
         
