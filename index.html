@@ -177,6 +177,7 @@
         }
 
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body class="flex justify-start min-h-screen p-4 sm:p-12">
 
@@ -215,10 +216,10 @@
             <button id="import-epub-btn" class="mt-4">
                 <i class="fas fa-file-import"></i> Import EPUB
             </button>
-            <a id="download-pdf-btn" class="mt-4 hidden">
+            <button id="download-pdf-btn" class="mt-4 hidden">
                 <i class="fas fa-download"></i> Download PDF
-            </a>
-            <p id="loading-message" class="text-white mt-2 hidden">Loading...</p>
+            </button>
+            <p id="loading-message" class="text-white mt-2 hidden">Processing...</p>
 
             <div class="tts-buttons">
                 <button id="tts-play-btn">
@@ -255,6 +256,9 @@
         const downloadPdfBtn = document.getElementById('download-pdf-btn');
         const loadingMessage = document.getElementById('loading-message');
         
+        let extractedText = '';
+        let epubFilename = '';
+
         // Helper function to add messages to the chat window
         function addMessage(sender, message, isTyping = false) {
             const messageWrapper = document.createElement('div');
@@ -392,16 +396,18 @@
             epubFileInput.click();
         });
 
+        // This is the new, crucial code for handling the EPUB file
         epubFileInput.addEventListener('change', async (event) => {
             const file = event.target.files[0];
             if (!file) return;
 
             loadingMessage.classList.remove('hidden');
             downloadPdfBtn.classList.add('hidden');
-            ttsInput.value = "Sending EPUB file to server for conversion...";
+            ttsInput.value = "Sending EPUB file to server for text extraction...";
 
             const formData = new FormData();
             formData.append('epubFile', file);
+            epubFilename = file.name;
 
             try {
                 const response = await fetch('/api/convert-epub', {
@@ -410,14 +416,10 @@
                 });
 
                 if (response.ok) {
-                    const blob = await response.blob();
-                    const url = URL.createObjectURL(blob);
-                    
-                    downloadPdfBtn.href = url;
-                    downloadPdfBtn.download = file.name.replace('.epub', '.pdf');
+                    extractedText = await response.text();
+                    ttsInput.value = extractedText;
                     downloadPdfBtn.classList.remove('hidden');
-                    
-                    ttsInput.value = "EPUB converted to PDF successfully. Click the download button.";
+                    alert("EPUB text extracted successfully!");
                 } else {
                     const errorText = await response.text();
                     ttsInput.value = `Conversion failed: ${errorText}`;
@@ -429,6 +431,39 @@
                 loadingMessage.classList.add('hidden');
             }
         });
+
+        downloadPdfBtn.addEventListener('click', () => {
+            if (extractedText) {
+                createAndDownloadPDF(extractedText, epubFilename);
+            } else {
+                alert("Please import an EPUB file first.");
+            }
+        });
+        
+        function createAndDownloadPDF(text, filename) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const pageHeight = doc.internal.pageSize.getHeight();
+            const margin = 10;
+            const lineHeight = 7;
+            const lines = doc.splitTextToSize(text, pageWidth - margin * 2);
+            let y = margin;
+
+            doc.setFontSize(12);
+
+            lines.forEach((line) => {
+                if (y + lineHeight > pageHeight - margin) {
+                    doc.addPage();
+                    y = margin;
+                }
+                doc.text(line, margin, y);
+                y += lineHeight;
+            });
+            
+            const pdfFilename = filename.replace('.epub', '.pdf');
+            doc.save(pdfFilename);
+        }
     </script>
 </body>
 </html>
