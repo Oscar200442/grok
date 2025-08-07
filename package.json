@@ -1,0 +1,8 @@
+{
+  "name": "grok-chatbot",
+  "version": "1.0.0",
+  "main": "api/index.js",
+  "dependencies": {
+    "node-fetch": "^2.6.1"
+  }
+}
