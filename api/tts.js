@@ -7,12 +7,12 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 // Helper function to convert raw PCM audio to a WAV file format
 function pcmToWav(pcmData, sampleRate) {
-    const pcm16 = new Int16Array(pcmData);
+    // We now receive the Int16Array directly, which is more reliable
     const numChannels = 1;
     const bitsPerSample = 16;
     const byteRate = (sampleRate * numChannels * bitsPerSample) / 8;
     const blockAlign = (numChannels * bitsPerSample) / 8;
-    const dataSize = pcm16.length * 2;
+    const dataSize = pcmData.length * 2;
     const buffer = new ArrayBuffer(44 + dataSize);
     const view = new DataView(buffer);
 
@@ -44,8 +44,8 @@ function pcmToWav(pcmData, sampleRate) {
     view.setUint32(40, dataSize, true);
     
     // Write PCM data
-    for (let i = 0; i < pcm16.length; i++) {
-        view.setInt16(44 + i * 2, pcm16[i], true);
+    for (let i = 0; i < pcmData.length; i++) {
+        view.setInt16(44 + i * 2, pcmData[i], true);
     }
 
     return new Blob([view], { type: 'audio/wav' });
@@ -111,11 +111,15 @@ module.exports = async (req, res) => {
         if (mimeType.includes('rate=')) {
             const sampleRate = parseInt(mimeType.match(/rate=(\d+)/)[1], 10);
             
-            // The API returns base64-encoded PCM audio. We need to decode it.
-            const pcmData = Buffer.from(audioData, 'base64');
+            // The API returns base64-encoded PCM audio. We decode it to a Buffer.
+            const pcmDataBuffer = Buffer.from(audioData, 'base64');
             
-            // Convert PCM to WAV format for browser compatibility
-            const wavBlob = pcmToWav(pcmData, sampleRate);
+            // We then create a proper Int16Array view of the buffer's data.
+            // This is crucial for correctly interpreting the 16-bit audio samples.
+            const pcm16 = new Int16Array(pcmDataBuffer.buffer, pcmDataBuffer.byteOffset, pcmDataBuffer.length / 2);
+            
+            // We pass the corrected Int16Array to the WAV conversion function.
+            const wavBlob = pcmToWav(pcm16, sampleRate);
             
             res.setHeader('Content-Type', 'audio/wav');
             res.send(Buffer.from(await wavBlob.arrayBuffer()));
