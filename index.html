@@ -290,6 +290,7 @@
 
         // Helper function to add messages to the chat window
         function addMessage(sender, message, isTyping = false) {
+            console.log(`[Message Added] Sender: ${sender}, Message: "${message}"`);
             const messageWrapper = document.createElement('div');
             messageWrapper.classList.add('flex', 'flex-col', sender === 'user' ? 'items-end' : 'items-start');
 
@@ -320,6 +321,7 @@
 
         // New function to simulate typing out the response
         function simulateTyping(text, bubbleElement) {
+            console.log(`[Typing Simulation Started] Response text: "${text.substring(0, 50)}..."`);
             lastBotResponse = text;
             let i = 0;
             const speed = 25;
@@ -346,6 +348,8 @@
 
                     chatWindow.scrollTop = chatWindow.scrollHeight;
                     setTimeout(typeWriter, speed);
+                } else {
+                     console.log("[Typing Simulation Finished]");
                 }
             }
             typeWriter();
@@ -355,11 +359,14 @@
         async function sendMessage() {
             const userMessage = chatInput.value.trim();
             if (!userMessage) return;
+            
+            console.log(`[User Action] Sending message: "${userMessage}"`);
 
             addMessage('user', userMessage);
             chatInput.value = '';
 
             const typingBubble = addMessage('bot', '', true);
+            console.log("[API Call] Fetching response from /api");
 
             try {
                 const response = await fetch('/api', {
@@ -372,12 +379,14 @@
                 typingBubble.classList.remove('typing');
                 
                 if (data.error) {
+                    console.error("[API Error]", data.error);
                     simulateTyping(`Error: ${data.error}`, typingBubble);
                 } else {
+                    console.log("[API Success] Received response:", data);
                     simulateTyping(data.text, typingBubble);
                 }
             } catch (error) {
-                console.error('Error:', error);
+                console.error('[API Call Failed]', error);
                 typingBubble.classList.remove('typing');
                 simulateTyping('Could not connect to the server.', typingBubble);
             }
@@ -393,35 +402,46 @@
 
         // Event listener for TTS Play
         ttsPlayBtn.addEventListener('click', () => {
+            console.log("[TTS] Play button clicked.");
             const textToSpeak = ttsInput.value.trim();
             if (textToSpeak) {
+                console.log(`[TTS] Speaking text: "${textToSpeak.substring(0, 50)}..."`);
                 const speech = new SpeechSynthesisUtterance(textToSpeak);
                 speech.lang = 'en-US';
                 speech.rate = ttsSpeedSlider.value;
                 window.speechSynthesis.speak(speech);
+            } else {
+                 console.warn("[TTS] No text to speak.");
             }
         });
 
         // Event listener for TTS Stop
         ttsStopBtn.addEventListener('click', () => {
+            console.log("[TTS] Stop button clicked. Cancelling speech.");
             window.speechSynthesis.cancel();
         });
 
         // Event listener for copy button
         copyLastResponseBtn.addEventListener('click', () => {
+            console.log("[Copy] Transfer AI Response button clicked.");
             if (lastBotResponse) {
                 const cleanText = lastBotResponse.replace(/\*([^*]+)\*/g, '$1');
                 ttsInput.value = cleanText;
+                console.log("[Copy] Last AI response transferred to TTS input.");
+            } else {
+                 console.warn("[Copy] No last AI response to transfer.");
             }
         });
         
         // Event listener for the slider
         ttsSpeedSlider.addEventListener('input', () => {
             ttsSpeedValue.textContent = ttsSpeedSlider.value;
+            console.log(`[Slider] TTS speed changed to: ${ttsSpeedSlider.value}`);
         });
 
         // Event listeners for EPUB import
         importEpubBtn.addEventListener('click', () => {
+            console.log("[EPUB] Import EPUB button clicked.");
             epubFileInput.click();
         });
 
@@ -430,6 +450,7 @@
             const file = event.target.files[0];
             if (!file) return;
 
+            console.log(`[EPUB] File selected: ${file.name}`);
             loadingMessage.classList.remove('hidden');
             downloadPdfBtn.classList.add('hidden');
             ttsInput.value = "Processing EPUB file...";
@@ -477,12 +498,14 @@
                         if (textContent) {
                             ttsInput.value = textContent;
                             downloadPdfBtn.classList.remove('hidden');
+                            console.log("[EPUB] Text extracted successfully. Length:", textContent.length);
                             alert("EPUB text extracted successfully!");
                         } else {
                             ttsInput.value = "Could not extract text from EPUB.";
+                            console.error("[EPUB] Extraction failed: No text found.");
                         }
                     } catch (error) {
-                        console.error('Extraction error:', error);
+                        console.error('[EPUB] Extraction error:', error);
                         ttsInput.value = 'Failed to process EPUB file. Please check the file format.';
                     } finally {
                         loadingMessage.classList.add('hidden');
@@ -491,21 +514,25 @@
                 fileReader.readAsArrayBuffer(file);
                 
             } catch (error) {
-                console.error('File reading error:', error);
+                console.error('[EPUB] File reading error:', error);
                 ttsInput.value = 'An error occurred while reading the file.';
                 loadingMessage.classList.add('hidden');
             }
         });
 
         downloadPdfBtn.addEventListener('click', () => {
+            console.log("[PDF] Download button clicked.");
             if (ttsInput.value) {
+                console.log("[PDF] Creating and downloading PDF.");
                 createAndDownloadPDF(ttsInput.value, epubFileInput.files[0].name);
             } else {
+                console.warn("[PDF] Cannot download. No text in TTS input.");
                 alert("Please import an EPUB file first.");
             }
         });
         
         function createAndDownloadPDF(text, filename) {
+            console.log(`[PDF] Creating PDF from text. Filename: ${filename}`);
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
             const pageWidth = doc.internal.pageSize.getWidth();
@@ -528,6 +555,7 @@
             
             const pdfFilename = filename.replace('.epub', '.pdf');
             doc.save(pdfFilename);
+            console.log(`[PDF] Download complete: ${pdfFilename}`);
         }
     </script>
 </body>
