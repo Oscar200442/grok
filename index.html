@@ -1,172 +1,349 @@
-<script>
-    // DOM elements for chatbot
-    const chatWindow = document.getElementById('chat-window');
-    const chatInput = document.getElementById('chat-input');
-    const sendBtn = document.getElementById('send-btn');
-    let lastBotResponse = '';
-
-    // DOM elements for TTS
-    const ttsInput = document.getElementById('tts-input');
-    const ttsPlayBtn = document.getElementById('tts-play-btn');
-    const ttsStopBtn = document.getElementById('tts-stop-btn');
-    const copyLastResponseBtn = document.getElementById('copy-last-response-btn');
-    
-    // Helper function to add messages to the chat window
-    function addMessage(sender, message, isTyping = false) {
-        const messageWrapper = document.createElement('div');
-        messageWrapper.classList.add('flex', 'flex-col', sender === 'user' ? 'items-end' : 'items-start');
-
-        const messageBubble = document.createElement('div');
-        messageBubble.classList.add('message-bubble');
-        
-        if (sender === 'user') {
-            messageBubble.classList.add('user-bubble');
-        } else {
-            messageBubble.classList.add('bot-bubble-iphone');
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatbot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Permanent+Marker&display=swap" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #808080;
+            display: flex;
+            justify-content: flex-end;
+            align-items: flex-start;
+            min-height: 100vh;
+            padding: 4rem 12rem;
+            gap: 12rem;
+        }
+        .chat-container, .tts-container {
+            width: 95%;
+            max-width: 450px;
+            background-color: #808080;
+            border-radius: 2rem;
+            height: 90vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .message-bubble {
+            border-radius: 1.5rem;
+            padding: 0.5rem 1.25rem;
+            max-width: 80%;
+        }
+        .user-bubble {
+            background-color: #1d4ed8;
+            color: white;
+            border-bottom-right-radius: 0.5rem;
+        }
+        .bot-bubble-iphone {
+            background-color: #34c759;
+            color: white;
+            border-bottom-left-radius: 0.5rem;
+        }
+        #chat-input::placeholder, #tts-input::placeholder {
+            color: #d1d5db;
+        }
+        .typing::after {
+            overflow: hidden;
+            display: inline-block;
+            vertical-align: bottom;
+            -webkit-animation: ellipsis steps(4,end) 1000ms infinite;
+            animation: ellipsis steps(4,end) 1000ms infinite;
+            content: "\2026";
+            width: 0px;
+        }
+        @keyframes ellipsis {
+            to {
+                width: 1.25em;
+            }
+        }
+        .title-font {
+            font-family: 'Permanent Marker', cursive;
         }
         
-        if (isTyping) {
-            messageBubble.classList.add('typing');
-            messageBubble.innerText = "The AI is thinking...";
-        } else {
-            const convertMarkdown = (text) => {
-                return text.replace(/\*(.*?)\*/g, '<em>$1</em>');
-            };
-            messageBubble.innerHTML = convertMarkdown(message);
+        .tts-controls {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            align-items: center;
+            padding: 2rem;
         }
         
-        messageWrapper.appendChild(messageBubble);
-        chatWindow.appendChild(messageWrapper);
-        chatWindow.scrollTop = chatWindow.scrollHeight;
-        return messageBubble;
-    }
+        #tts-input {
+            width: 100%;
+            height: 200px;
+            padding: 1rem;
+            border-radius: 1rem;
+            background-color: #5a5a5a;
+            color: white;
+            border: none;
+            resize: none;
+            font-size: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        #send-btn, #copy-last-response-btn, #tts-play-btn, #tts-stop-btn {
+            background-color: #ffb6c1;
+            color: white;
+            border-radius: 2rem;
+            font-size: 1.25rem;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            border: none;
+        }
 
-    // New function to simulate typing out the response
-    function simulateTyping(text, bubbleElement) {
-        lastBotResponse = text;
-        let i = 0;
-        const speed = 25;
-        bubbleElement.innerHTML = '';
+        #send-btn:hover, #copy-last-response-btn:hover, #tts-play-btn:hover, #tts-stop-btn:hover {
+            background-color: #ff91a4;
+        }
+        
+        #send-btn {
+            width: 100%;
+            padding: 1rem;
+        }
+        
+        #copy-last-response-btn {
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            white-space: nowrap;
+        }
 
-        function typeWriter() {
-            if (i < text.length) {
-                const char = text[i];
-                
-                if (char === '*') {
-                    let endIndex = text.indexOf('*', i + 1);
-                    if (endIndex !== -1) {
-                        const boldText = text.substring(i + 1, endIndex);
-                        bubbleElement.innerHTML += `<em>${boldText}</em>`;
-                        i = endIndex + 1;
+        .tts-buttons {
+            display: flex;
+            gap: 1rem;
+            width: 100%;
+        }
+
+        #tts-play-btn, #tts-stop-btn {
+            width: 50%;
+            padding: 1rem;
+        }
+
+        .copy-button-container {
+            align-self: center;
+            margin-top: 10rem;
+        }
+    </style>
+</head>
+<body class="flex justify-start min-h-screen p-4 sm:p-12">
+
+    <div class="chat-container h-[90vh] bg-[#808080] rounded-2xl flex flex-col">
+        <div id="oraculum-title" class="p-6 text-center text-4xl font-normal text-white rounded-t-2xl title-font">
+            Actuary AI
+        </div>
+
+        <div id="chat-window" class="flex-grow p-6 overflow-y-auto space-y-4">
+            </div>
+
+        <div class="p-4 rounded-b-2xl flex flex-col items-center space-y-2">
+            <input type="text" id="chat-input" class="w-full p-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow bg-[#5a5a5a] text-white" placeholder="Type your message...">
+            <button id="send-btn">
+                Send
+            </button>
+        </div>
+    </div>
+
+    <div class="copy-button-container flex flex-col items-center justify-center h-[90vh]">
+        <button id="copy-last-response-btn" class="flex items-center space-x-2">
+            <i class="fas fa-arrow-right"></i>
+            <span>Transfer AI Response</span>
+        </button>
+    </div>
+
+    <div class="tts-container h-[90vh] bg-[#808080] rounded-2xl flex flex-col">
+        <div id="tts-title" class="p-6 text-center text-4xl font-normal text-white rounded-t-2xl title-font">
+            Text to voice
+        </div>
+        
+        <div class="tts-controls">
+            <textarea id="tts-input" placeholder="Write your text here"></textarea>
+            <div class="tts-buttons">
+                <button id="tts-play-btn">
+                    <i class="fas fa-play"></i> Play
+                </button>
+                <button id="tts-stop-btn">
+                    <i class="fas fa-stop"></i> Stop
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM elements for chatbot
+        const chatWindow = document.getElementById('chat-window');
+        const chatInput = document.getElementById('chat-input');
+        const sendBtn = document.getElementById('send-btn');
+        let lastBotResponse = '';
+
+        // DOM elements for TTS
+        const ttsInput = document.getElementById('tts-input');
+        const ttsPlayBtn = document.getElementById('tts-play-btn');
+        const ttsStopBtn = document.getElementById('tts-stop-btn');
+        const copyLastResponseBtn = document.getElementById('copy-last-response-btn');
+        
+        // Helper function to add messages to the chat window
+        function addMessage(sender, message, isTyping = false) {
+            const messageWrapper = document.createElement('div');
+            messageWrapper.classList.add('flex', 'flex-col', sender === 'user' ? 'items-end' : 'items-start');
+
+            const messageBubble = document.createElement('div');
+            messageBubble.classList.add('message-bubble');
+            
+            if (sender === 'user') {
+                messageBubble.classList.add('user-bubble');
+            } else {
+                messageBubble.classList.add('bot-bubble-iphone');
+            }
+            
+            if (isTyping) {
+                messageBubble.classList.add('typing');
+                messageBubble.innerText = "The AI is thinking...";
+            } else {
+                const convertMarkdown = (text) => {
+                    return text.replace(/\*(.*?)\*/g, '<em>$1</em>');
+                };
+                messageBubble.innerHTML = convertMarkdown(message);
+            }
+            
+            messageWrapper.appendChild(messageBubble);
+            chatWindow.appendChild(messageWrapper);
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+            return messageBubble;
+        }
+
+        // New function to simulate typing out the response
+        function simulateTyping(text, bubbleElement) {
+            lastBotResponse = text;
+            let i = 0;
+            const speed = 25;
+            bubbleElement.innerHTML = '';
+
+            function typeWriter() {
+                if (i < text.length) {
+                    const char = text[i];
+                    
+                    if (char === '*') {
+                        let endIndex = text.indexOf('*', i + 1);
+                        if (endIndex !== -1) {
+                            const boldText = text.substring(i + 1, endIndex);
+                            bubbleElement.innerHTML += `<em>${boldText}</em>`;
+                            i = endIndex + 1;
+                        } else {
+                            bubbleElement.innerHTML += char;
+                            i++;
+                        }
                     } else {
                         bubbleElement.innerHTML += char;
                         i++;
                     }
-                } else {
-                    bubbleElement.innerHTML += char;
-                    i++;
+
+                    chatWindow.scrollTop = chatWindow.scrollHeight;
+                    setTimeout(typeWriter, speed);
                 }
-
-                chatWindow.scrollTop = chatWindow.scrollHeight;
-                setTimeout(typeWriter, speed);
             }
+            typeWriter();
         }
-        typeWriter();
-    }
 
-    // Function to send a message to the chatbot API
-    async function sendMessage() {
-        const userMessage = chatInput.value.trim();
-        if (!userMessage) return;
+        // Function to send a message to the chatbot API
+        async function sendMessage() {
+            const userMessage = chatInput.value.trim();
+            if (!userMessage) return;
 
-        addMessage('user', userMessage);
-        chatInput.value = '';
+            addMessage('user', userMessage);
+            chatInput.value = '';
 
-        const typingBubble = addMessage('bot', '', true);
+            const typingBubble = addMessage('bot', '', true);
 
-        try {
-            const response = await fetch('/api', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt: userMessage })
-            });
-            const data = await response.json();
-            
-            typingBubble.classList.remove('typing');
-            
-            if (data.error) {
-                simulateTyping(`Error: ${data.error}`, typingBubble);
-            } else {
-                simulateTyping(data.text, typingBubble);
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            typingBubble.classList.remove('typing');
-            simulateTyping('Could not connect to the server.', typingBubble);
-        }
-    }
-    
-    // Event listener for chatbot
-    sendBtn.addEventListener('click', sendMessage);
-    chatInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            sendMessage();
-        }
-    });
-
-    // Event listener for TTS Play (OPDATERET TIL AT BRUGE VERCEL API)
-    ttsPlayBtn.addEventListener('click', async () => {
-        const textToSpeak = ttsInput.value.trim();
-        if (textToSpeak) {
             try {
-                ttsPlayBtn.disabled = true;
-                ttsStopBtn.disabled = true;
-
-                const response = await fetch('/api/tts', {
+                const response = await fetch('/api', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text: textToSpeak })
+                    body: JSON.stringify({ prompt: userMessage })
                 });
-
-                if (!response.ok) {
-                    throw new Error('Fejl ved generering af tale.');
-                }
-
-                const audioBlob = await response.blob();
-                const audioUrl = URL.createObjectURL(audioBlob);
-                const audio = new Audio(audioUrl);
+                const data = await response.json();
                 
-                window.currentAudio = audio;
-                audio.play();
+                typingBubble.classList.remove('typing');
+                
+                if (data.error) {
+                    simulateTyping(`Error: ${data.error}`, typingBubble);
+                } else {
+                    simulateTyping(data.text, typingBubble);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                typingBubble.classList.remove('typing');
+                simulateTyping('Could not connect to the server.', typingBubble);
+            }
+        }
+        
+        // Event listener for chatbot
+        sendBtn.addEventListener('click', sendMessage);
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
 
-                audio.onended = () => {
+        // Event listener for TTS Play (OPDATERET TIL AT BRUGE VERCEL API)
+        ttsPlayBtn.addEventListener('click', async () => {
+            const textToSpeak = ttsInput.value.trim();
+            if (textToSpeak) {
+                try {
+                    ttsPlayBtn.disabled = true;
+                    ttsStopBtn.disabled = true;
+
+                    const response = await fetch('/api/tts', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text: textToSpeak })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Fejl ved generering af tale.');
+                    }
+
+                    const audioBlob = await response.blob();
+                    const audioUrl = URL.createObjectURL(audioBlob);
+                    const audio = new Audio(audioUrl);
+                    
+                    window.currentAudio = audio;
+                    audio.play();
+
+                    audio.onended = () => {
+                        ttsPlayBtn.disabled = false;
+                        ttsStopBtn.disabled = false;
+                    };
+
+                } catch (error) {
+                    console.error('Fejl ved afspilning af tale:', error);
                     ttsPlayBtn.disabled = false;
                     ttsStopBtn.disabled = false;
-                };
+                }
+            }
+        });
 
-            } catch (error) {
-                console.error('Fejl ved afspilning af tale:', error);
+        // Event listener for TTS Stop (OPDATERET TIL AT BRUGE VERCEL API)
+        ttsStopBtn.addEventListener('click', () => {
+            if (window.currentAudio) {
+                window.currentAudio.pause();
+                window.currentAudio.currentTime = 0;
                 ttsPlayBtn.disabled = false;
                 ttsStopBtn.disabled = false;
             }
-        }
-    });
+        });
 
-    // Event listener for TTS Stop (OPDATERET TIL AT BRUGE VERCEL API)
-    ttsStopBtn.addEventListener('click', () => {
-        if (window.currentAudio) {
-            window.currentAudio.pause();
-            window.currentAudio.currentTime = 0;
-            ttsPlayBtn.disabled = false;
-            ttsStopBtn.disabled = false;
-        }
-    });
-
-    // Ny event listener for kopieringsknappen
-    copyLastResponseBtn.addEventListener('click', () => {
-        if (lastBotResponse) {
-            const cleanText = lastBotResponse.replace(/\*([^*]+)\*/g, '$1');
-            ttsInput.value = cleanText;
-        }
-    });
-</script>
+        // Ny event listener for kopieringsknappen
+        copyLastResponseBtn.addEventListener('click', () => {
+            if (lastBotResponse) {
+                const cleanText = lastBotResponse.replace(/\*([^*]+)\*/g, '$1');
+                ttsInput.value = cleanText;
+            }
+        });
+    </script>
+</body>
+</html>
