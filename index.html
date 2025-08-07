@@ -90,29 +90,7 @@
         // Global variables for audio handling
         let lastBotResponse = '';
         let isSpeaking = false;
-        let audioContext;
-        let sourceNodes = [];
-        let scheduledTime = 0;
-        let streamReader;
-
-        // Creates an AudioContext, which is necessary for playing audio
-        function getAudioContext() {
-            if (!audioContext) {
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            }
-            return audioContext;
-        }
-
-        // Converts Base64 string to ArrayBuffer
-        function base64ToArrayBuffer(base64) {
-            const binaryString = window.atob(base64);
-            const len = binaryString.length;
-            const bytes = new Uint8Array(len);
-            for (let i = 0; i < len; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
-            }
-            return bytes.buffer;
-        }
+        const audioPlayer = new Audio();
 
         // Helper function to add messages to the chat window
         function addMessage(sender, message, isTyping = false) {
@@ -142,17 +120,8 @@
         // Function to stop audio playback
         function stopSpeaking() {
             if (isSpeaking) {
-                if (streamReader) {
-                    streamReader.cancel('User requested to stop speaking.');
-                }
-                sourceNodes.forEach(node => {
-                    try {
-                        node.stop();
-                    } catch (e) {
-                        // The node may have already stopped
-                    }
-                });
-                sourceNodes = [];
+                audioPlayer.pause();
+                audioPlayer.currentTime = 0;
                 isSpeaking = false;
                 speakBtn.disabled = false;
                 speakIcon.classList.remove('fa-stop', 'text-red-500');
@@ -160,7 +129,7 @@
             }
         }
 
-        // Function to stream and play audio from the API
+        // Function to convert text to speech and play it
         async function speakResponse() {
             if (!lastBotResponse) {
                 console.warn('No text to speak. Waiting for a bot response.');
@@ -180,53 +149,32 @@
             speakIcon.classList.add('fa-spinner', 'fa-spin');
 
             try {
-                const audioCtx = getAudioContext();
-                scheduledTime = audioCtx.currentTime;
-
                 const response = await fetch('/api/tts', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ text: lastBotResponse })
                 });
                 
-                if (!response.ok || !response.body) {
+                if (!response.ok) {
                     const errorData = await response.json();
                     throw new Error(errorData.error || 'Failed to generate speech.');
                 }
 
+                const blob = await response.blob();
+                const audioUrl = URL.createObjectURL(blob);
+                
                 // Update the button icon to "stop"
                 speakBtn.disabled = false;
                 speakIcon.classList.remove('fa-spinner', 'fa-spin');
                 speakIcon.classList.add('fa-stop', 'text-red-500');
 
-                // Read the audio data stream
-                streamReader = response.body.getReader();
-                const processStream = async () => {
-                    while (true) {
-                        const { done, value } = await streamReader.read();
-                        if (done) {
-                            stopSpeaking();
-                            break;
-                        }
+                audioPlayer.src = audioUrl;
+                audioPlayer.play();
 
-                        // Decode the base64-encoded audio and play it
-                        const audioChunk = JSON.parse(new TextDecoder().decode(value));
-                        const audioData = base64ToArrayBuffer(audioChunk.inlineData.data);
-                        
-                        audioCtx.decodeAudioData(audioData, buffer => {
-                            const source = audioCtx.createBufferSource();
-                            source.buffer = buffer;
-                            source.connect(audioCtx.destination);
-                            
-                            // Schedule playback of this chunk immediately after the previous one
-                            source.start(scheduledTime);
-                            scheduledTime += buffer.duration;
-                            sourceNodes.push(source);
-                        });
-                    }
+                // Listen for when the audio has finished playing
+                audioPlayer.onended = () => {
+                    stopSpeaking();
                 };
-
-                processStream();
                 
             } catch (error) {
                 console.error('Error during TTS:', error);
@@ -241,6 +189,7 @@
             if (!userMessage) return;
 
             // Before sending, disable the speak button and clear any previous bot response
+            stopSpeaking(); // Stop any current playback
             speakBtn.disabled = true;
             lastBotResponse = '';
 
