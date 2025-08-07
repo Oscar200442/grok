@@ -187,7 +187,7 @@
             Actuary AI
         </div>
 
-        <div id="chat-window" class-="flex-grow p-6 overflow-y-auto space-y-4">
+        <div id="chat-window" class="flex-grow p-6 overflow-y-auto space-y-4">
             </div>
 
         <div class="p-4 rounded-b-2xl flex flex-col items-center space-y-2">
@@ -396,23 +396,34 @@
         epubFileInput.addEventListener('change', async (event) => {
             const file = event.target.files[0];
             if (file) {
+                ttsInput.value = "Loading EPUB file...";
+                
                 const reader = new FileReader();
                 reader.onload = async (e) => {
                     const book = e.target.result;
                     const epub = new ePub(book);
                     
-                    epub.ready.then(() => {
-                        epub.flow.on('rendered', (section) => {
-                            const text = section.contents.extract();
-                            ttsInput.value = text.trim();
+                    epub.ready.then(async () => {
+                        const allText = [];
+                        const textPromises = epub.spine.items.map(async (item) => {
+                            const doc = await item.load();
+                            return doc.body.textContent.trim();
                         });
                         
-                        epub.spine.each(item => {
-                            item.load().then(doc => {
-                                const fullText = doc.body.textContent;
-                                createAndDownloadPDF(fullText, file.name);
-                            });
+                        const textChunks = await Promise.all(textPromises);
+                        const fullText = textChunks.filter(text => text.length > 0).join('\n\n');
+                        
+                        ttsInput.value = fullText;
+                        
+                        // Vis download knappen
+                        downloadPdfBtn.classList.remove('hidden');
+                        
+                        // Opret og download PDF-filen
+                        downloadPdfBtn.addEventListener('click', () => {
+                           createAndDownloadPDF(fullText, file.name);
                         });
+
+                        alert("EPUB file imported successfully! You can now download the PDF.");
                     });
                 };
                 reader.readAsArrayBuffer(file);
