@@ -117,17 +117,55 @@
             display: flex;
             gap: 1rem;
             width: 100%;
+            margin-top: 1rem;
         }
-
+        
         #tts-play-btn, #tts-stop-btn {
             width: 50%;
             padding: 1rem;
         }
-
+        
         .copy-button-container {
             align-self: center;
             margin-top: 10rem;
         }
+        
+        /* Stylering af skyderen */
+        .pink-slider {
+            width: 100%;
+            height: 8px;
+            background: #e9b3bc; /* Lys lyserød baggrund */
+            border-radius: 4px;
+            -webkit-appearance: none;
+            cursor: pointer;
+            margin-top: 1.5rem;
+        }
+
+        .pink-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #ffb6c1; /* Pastel-lyserød knap */
+            border-radius: 50%;
+            border: 2px solid #808080;
+            cursor: pointer;
+        }
+        
+        .pink-slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: #ffb6c1;
+            border-radius: 50%;
+            border: 2px solid #808080;
+            cursor: pointer;
+        }
+        
+        .slider-label {
+            color: white;
+            font-size: 0.875rem;
+            text-align: center;
+        }
+
     </style>
 </head>
 <body class="flex justify-start min-h-screen p-4 sm:p-12">
@@ -170,6 +208,10 @@
                     <i class="fas fa-stop"></i> Stop
                 </button>
             </div>
+            <div class="w-full mt-4">
+                <div class="slider-label">Speed: <span id="tts-speed-value">1.0</span></div>
+                <input type="range" id="tts-speed-slider" class="pink-slider" min="0.5" max="2" value="1" step="0.1">
+            </div>
         </div>
     </div>
 
@@ -185,7 +227,9 @@
         const ttsPlayBtn = document.getElementById('tts-play-btn');
         const ttsStopBtn = document.getElementById('tts-stop-btn');
         const copyLastResponseBtn = document.getElementById('copy-last-response-btn');
-        
+        const ttsSpeedSlider = document.getElementById('tts-speed-slider');
+        const ttsSpeedValue = document.getElementById('tts-speed-value');
+
         // Helper function to add messages to the chat window
         function addMessage(sender, message, isTyping = false) {
             const messageWrapper = document.createElement('div');
@@ -295,6 +339,7 @@
             if (textToSpeak) {
                 const speech = new SpeechSynthesisUtterance(textToSpeak);
                 speech.lang = 'da-DK';
+                speech.rate = ttsSpeedSlider.value; // Anvender hastigheden fra skyderen
                 window.speechSynthesis.speak(speech);
             }
         });
@@ -310,6 +355,11 @@
                 const cleanText = lastBotResponse.replace(/\*([^*]+)\*/g, '$1');
                 ttsInput.value = cleanText;
             }
+        });
+        
+        // Event listener for skyderen
+        ttsSpeedSlider.addEventListener('input', () => {
+            ttsSpeedValue.textContent = ttsSpeedSlider.value;
         });
     </script>
 </body>
