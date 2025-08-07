@@ -179,6 +179,11 @@
 
             try {
                 for (const chunk of textChunks) {
+                    // Check if the user has pressed the stop button
+                    if (!isSpeaking) {
+                        break;
+                    }
+
                     const response = await fetch('/api/tts', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
