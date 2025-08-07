@@ -1,142 +1,63 @@
-<!DOCTYPE html>
-<html lang="da">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Grok Chatbot</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f4;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
-        .chat-container {
-            width: 90%;
-            max-width: 600px;
-            background-color: #fff;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            border-radius: 8px;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            height: 80vh;
-        }
-        .chat-messages {
-            flex-grow: 1;
-            padding: 20px;
-            overflow-y: auto;
-            border-bottom: 1px solid #ddd;
-        }
-        .message {
-            margin-bottom: 15px;
-            padding: 10px;
-            border-radius: 5px;
-            max-width: 80%;
-        }
-        .message.user {
-            background-color: #007bff;
-            color: #fff;
-            margin-left: auto;
-            text-align: right;
-        }
-        .message.bot {
-            background-color: #e2e6ea;
-            color: #333;
-            margin-right: auto;
-            text-align: left;
-        }
-        .chat-input {
-            display: flex;
-            padding: 10px;
-            border-top: 1px solid #ddd;
-        }
-        .chat-input input {
-            flex-grow: 1;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            padding: 10px;
-            font-size: 16px;
-        }
-        .chat-input button {
-            background-color: #007bff;
-            color: #fff;
-            border: none;
-            padding: 10px 15px;
-            margin-left: 10px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-        }
-    </style>
-</head>
-<body>
-    <div class="chat-container">
-        <div class="chat-messages" id="chat-messages">
-            <div class="message bot">Hej, jeg er din Grok-chatbot. Spørg mig om noget!</div>
-        </div>
-        <div class="chat-input">
-            <input type="text" id="user-input" placeholder="Skriv din besked...">
-            <button onclick="sendMessage()">Send</button>
-        </div>
-    </div>
+// api/index.js
 
-    <script>
-        // Funktion til at sende beskeder til API'en og vise svaret
-        async function sendMessage() {
-            const userInput = document.getElementById('user-input');
-            const chatMessages = document.getElementById('chat-messages');
-            const userMessage = userInput.value;
+// This is a simple Vercel Serverless Function to act as a proxy for the Grok API.
+// It handles a POST request, sends a message to the Grok API, and returns the response.
 
-            if (userMessage.trim() === '') {
-                return;
-            }
+const fetch = require('node-fetch');
 
-            // Vis brugerens besked i chatten
-            const userMessageDiv = document.createElement('div');
-            userMessageDiv.classList.add('message', 'user');
-            userMessageDiv.textContent = userMessage;
-            chatMessages.appendChild(userMessageDiv);
-            userInput.value = ''; // Nulstil inputfeltet
-            chatMessages.scrollTop = chatMessages.scrollHeight;
+module.exports = async (req, res) => {
+    // We only want to handle POST requests.
+    if (req.method !== 'POST') {
+        res.status(405).send('Method Not Allowed');
+        return;
+    }
 
-            // Send beskeden til din Vercel API
-            try {
-                const response = await fetch('/api', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ prompt: userMessage })
-                });
+    // A prompt is required in the request body.
+    if (!req.body.prompt) {
+        res.status(400).json({ error: 'Prompt is required in the request body.' });
+        return;
+    }
 
-                const data = await response.json();
+    // Get the API key from the environment variables.
+    // This is crucial for security! NEVER hardcode your API key.
+    const apiKey = process.env.XAI_API_KEY;
 
-                // Vis Grok-svaret i chatten
-                const botMessageDiv = document.createElement('div');
-                botMessageDiv.classList.add('message', 'bot');
-                botMessageDiv.textContent = data.text || data.error;
-                chatMessages.appendChild(botMessageDiv);
-                chatMessages.scrollTop = chatMessages.scrollHeight;
+    if (!apiKey) {
+        res.status(500).json({ error: 'Server configuration error: XAI_API_KEY is not set.' });
+        return;
+    }
 
-            } catch (error) {
-                console.error('Fejl ved hentning af Grok-svar:', error);
-                const errorMessageDiv = document.createElement('div');
-                errorMessageDiv.classList.add('message', 'bot');
-                errorMessageDiv.textContent = 'Undskyld, jeg kunne ikke forbinde til Grok. Prøv igen senere.';
-                chatMessages.appendChild(errorMessageDiv);
-                chatMessages.scrollTop = chatMessages.scrollHeight;
-            }
-        }
+    try {
+        // Construct the payload for the Grok API.
+        const payload = {
+            model: "grok-1", // You can change this to a different Grok model if needed.
+            messages: [{ role: "user", content: req.body.prompt }],
+        };
 
-        document.getElementById('user-input').addEventListener('keypress', function(event) {
-            if (event.key === 'Enter') {
-                sendMessage();
-            }
+        // Make the API call to Grok.
+        const response = await fetch('https://api.x.ai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}` // Use the API key from environment variables.
+            },
+            body: JSON.stringify(payload)
         });
-    </script>
-</body>
-</html>
+
+        const data = await response.json();
+
+        // Check for errors from the Grok API itself.
+        if (data.error) {
+            res.status(response.status).json({ error: `Grok API error: ${data.error.message}` });
+            return;
+        }
+
+        // Return the generated text from the Grok API.
+        res.status(200).json({ text: data.choices[0].message.content });
+
+    } catch (error) {
+        // Handle any unexpected errors.
+        console.error('Error during API call:', error);
+        res.status(500).json({ error: 'An unexpected error occurred.' });
+    }
+};
