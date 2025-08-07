@@ -3,8 +3,6 @@ import os from 'os';
 import path from 'path';
 import JSZip from 'jszip';
 import { XMLParser } from 'fast-xml-parser';
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
-import fontkit from '@pdf-lib/fontkit';
 import formidable from 'formidable';
 
 export const config = {
@@ -93,46 +91,10 @@ export default async function handler(req, res) {
       return res.status(500).send('Could not extract text from EPUB.');
     }
 
-    const pdfDoc = await PDFDocument.create();
-    pdfDoc.registerFontkit(fontkit);
-    const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
-
-    const pageSize = pdfDoc.getPageSizes()[0];
-    const margin = 50;
-    const pageWidth = pageSize.width - 2 * margin;
-    const lineHeight = 14;
-
-    const lines = extractedText.split('\n');
-    let page = pdfDoc.addPage();
-    let y = pageSize.height - margin;
-
-    for (const line of lines) {
-      const textWidth = helveticaFont.widthOfTextAtSize(line, 12);
-      const textLines = textWidth > pageWidth ? line.match(new RegExp(`.{1,${Math.floor(pageWidth / (12 / helveticaFont.widthOfTextAtSize('a', 12)))}}`, 'g')) : [line];
-
-      for (const textLine of textLines) {
-        if (y < margin) {
-          page = pdfDoc.addPage();
-          y = pageSize.height - margin;
-        }
-        page.drawText(textLine, {
-          x: margin,
-          y: y,
-          size: 12,
-          font: helveticaFont,
-          color: rgb(0, 0, 0),
-        });
-        y -= lineHeight;
-      }
-    }
-
-    const pdfBytes = await pdfDoc.save();
-
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${epubFile.originalFilename.replace('.epub', '.pdf')}"`);
-    return res.status(200).send(Buffer.from(pdfBytes));
+    res.setHeader('Content-Type', 'text/plain');
+    return res.status(200).send(extractedText);
   } catch (error) {
-    console.error('Error during EPUB to PDF conversion:', error);
+    console.error('Error during EPUB to text extraction:', error);
     return res.status(500).send('An error occurred during conversion.');
   }
 }
