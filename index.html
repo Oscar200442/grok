@@ -15,18 +15,17 @@
             font-family: 'Inter', sans-serif;
             background-color: #808080;
             display: flex;
-            justify-content: center; /* Centrer indholdet vandret */
-            align-items: flex-start; /* Juster indholdet til toppen lodret */
+            justify-content: space-between; /* Placerer boksene i hver sin ende */
+            align-items: flex-start;
             min-height: 100vh;
-            padding: 4rem; /* Øget padding for at give plads til to bokse */
-            gap: 4rem; /* Tilføj mellemrum mellem de to bokse */
+            padding: 4rem;
         }
         .chat-container, .tts-container {
             width: 95%;
             max-width: 450px;
             background-color: #808080;
             border-radius: 2rem;
-            height: 90vh; /* Sæt en fast højde for at matche */
+            height: 90vh;
             display: flex;
             flex-direction: column;
         }
@@ -62,12 +61,12 @@
                 width: 1.25em;
             }
         }
-        #oraculum-title {
+        .title-font {
             font-family: 'Permanent Marker', cursive;
         }
         
         .tts-controls {
-            flex-grow: 1; /* Sørg for, at denne div fylder det resterende rum */
+            flex-grow: 1;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -83,7 +82,7 @@
             background-color: #5a5a5a;
             color: white;
             border: none;
-            resize: none; /* Forhindrer brugeren i at ændre størrelsen */
+            resize: none;
             font-size: 1rem;
             margin-bottom: 1rem;
         }
@@ -91,7 +90,7 @@
         #tts-play-btn {
             width: 100%;
             padding: 1rem;
-            background-color: #34c759; /* Grøn farve for at matche bot-bobler */
+            background-color: #34c759;
             color: white;
             border-radius: 2rem;
             font-size: 1.25rem;
@@ -107,7 +106,7 @@
 <body class="flex justify-start min-h-screen p-4 sm:p-12">
 
     <div class="chat-container h-[90vh] bg-[#808080] rounded-2xl flex flex-col">
-        <div id="oraculum-title" class="p-6 text-center text-4xl font-normal text-white rounded-t-2xl">
+        <div id="oraculum-title" class="p-6 text-center text-4xl font-normal text-white rounded-t-2xl title-font">
             Actuary AI
         </div>
 
@@ -123,8 +122,8 @@
     </div>
 
     <div class="tts-container h-[90vh] bg-[#808080] rounded-2xl flex flex-col">
-        <div id="tts-title" class="p-6 text-center text-4xl font-normal text-white rounded-t-2xl">
-            Tekst til stemme
+        <div id="tts-title" class="p-6 text-center text-4xl font-normal text-white rounded-t-2xl title-font">
+            Text to voice
         </div>
         
         <div class="tts-controls">
@@ -163,7 +162,6 @@
                 messageBubble.classList.add('typing');
                 messageBubble.innerText = "The AI is thinking...";
             } else {
-                // This part is no longer used for displaying the final message directly
                 const convertMarkdown = (text) => {
                     return text.replace(/\*(.*?)\*/g, '<em>$1</em>');
                 };
@@ -252,12 +250,10 @@
         ttsPlayBtn.addEventListener('click', () => {
             const textToSpeak = ttsInput.value.trim();
             if (textToSpeak) {
-                // Her skal din kode for at kalde Geminis TTS API være
                 console.log("Afspiller teksten:", textToSpeak);
 
-                // Eksempel ved brug af den indbyggede Web Speech API
                 const speech = new SpeechSynthesisUtterance(textToSpeak);
-                speech.lang = 'da-DK'; // Sæt sproget til dansk
+                speech.lang = 'da-DK';
                 window.speechSynthesis.speak(speech);
             }
         });
