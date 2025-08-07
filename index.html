@@ -133,6 +133,29 @@
             }
         }
 
+        // Function to split text into manageable chunks by sentence.
+        function splitTextIntoChunks(text) {
+            // Split by common sentence-ending punctuation.
+            const sentences = text.match(/[^.!?]+[.!?]|\S+/g) || [];
+            let chunks = [];
+            let currentChunk = '';
+
+            for (const sentence of sentences) {
+                if ((currentChunk + ' ' + sentence).length < 200) { // Limit chunk size to avoid API errors
+                    currentChunk += (currentChunk ? ' ' : '') + sentence;
+                } else {
+                    if (currentChunk) {
+                        chunks.push(currentChunk);
+                    }
+                    currentChunk = sentence;
+                }
+            }
+            if (currentChunk) {
+                chunks.push(currentChunk);
+            }
+            return chunks;
+        }
+
         // Function to convert text to speech and play it
         async function speakResponse() {
             if (!lastBotResponse) {
@@ -152,34 +175,39 @@
             speakIcon.classList.remove('fa-volume-up');
             speakIcon.classList.add('fa-spinner', 'fa-spin');
 
+            const textChunks = splitTextIntoChunks(lastBotResponse);
+
             try {
-                const response = await fetch('/api/tts', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text: lastBotResponse })
-                });
-                
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || 'Failed to generate speech.');
+                for (const chunk of textChunks) {
+                    const response = await fetch('/api/tts', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text: chunk })
+                    });
+                    
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || 'Failed to generate speech.');
+                    }
+
+                    const blob = await response.blob();
+                    const audioUrl = URL.createObjectURL(blob);
+                    
+                    // Update the button icon to "stop"
+                    speakBtn.disabled = false;
+                    speakIcon.classList.remove('fa-spinner', 'fa-spin');
+                    speakIcon.classList.add('fa-stop', 'text-red-500');
+
+                    audioPlayer.src = audioUrl;
+                    await audioPlayer.play();
+
+                    // Wait for the current audio to finish before playing the next chunk
+                    await new Promise(resolve => audioPlayer.onended = resolve);
                 }
-
-                const blob = await response.blob();
-                const audioUrl = URL.createObjectURL(blob);
                 
-                // Update the button icon to "stop"
-                speakBtn.disabled = false;
-                speakIcon.classList.remove('fa-spinner', 'fa-spin');
-                speakIcon.classList.add('fa-stop', 'text-red-500');
+                // After all chunks have played, stop speaking
+                stopSpeaking();
 
-                audioPlayer.src = audioUrl;
-                audioPlayer.play();
-
-                // Listen for when the audio has finished playing
-                audioPlayer.onended = () => {
-                    stopSpeaking();
-                };
-                
             } catch (error) {
                 console.error('Error during TTS:', error);
                 addMessage('bot', `Speech generation error: ${error.message}`);
