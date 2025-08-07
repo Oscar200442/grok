@@ -88,23 +88,23 @@
             margin-bottom: 1rem;
         }
         
-        #send-btn, #copy-last-response-btn, #tts-play-btn, #tts-stop-btn {
-            background-color: #ffb6c1; /* Pastel-lyserød */
+        #send-btn, #copy-last-response-btn, #tts-play-btn, #tts-stop-btn, #import-epub-btn, #download-pdf-btn {
+            background-color: #ffb6c1;
             color: white;
             border-radius: 2rem;
-            font-size: 1.25rem;
             cursor: pointer;
             transition: background-color 0.3s;
             border: none;
         }
 
-        #send-btn:hover, #copy-last-response-btn:hover, #tts-play-btn:hover, #tts-stop-btn:hover {
-            background-color: #ff91a4; /* Mørkere pastel-lyserød ved hover */
+        #send-btn:hover, #copy-last-response-btn:hover, #tts-play-btn:hover, #tts-stop-btn:hover, #import-epub-btn:hover, #download-pdf-btn:hover {
+            background-color: #ff91a4;
         }
         
         #send-btn {
             width: 100%;
             padding: 1rem;
+            font-size: 1.25rem;
         }
         
         #copy-last-response-btn {
@@ -117,18 +117,68 @@
             display: flex;
             gap: 1rem;
             width: 100%;
+            margin-top: 1rem;
         }
-
+        
         #tts-play-btn, #tts-stop-btn {
             width: 50%;
             padding: 1rem;
+            font-size: 1.25rem;
         }
-
+        
+        #import-epub-btn, #download-pdf-btn {
+            width: 100%;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+        }
+        
         .copy-button-container {
             align-self: center;
             margin-top: 10rem;
         }
+        
+        .pink-slider {
+            width: 100%;
+            height: 8px;
+            background: #e9b3bc;
+            border-radius: 4px;
+            -webkit-appearance: none;
+            cursor: pointer;
+            margin-top: 1.5rem;
+        }
+
+        .pink-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #ffb6c1;
+            border-radius: 50%;
+            border: 2px solid #808080;
+            cursor: pointer;
+        }
+        
+        .pink-slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: #ffb6c1;
+            border-radius: 50%;
+            border: 2px solid #808080;
+            cursor: pointer;
+        }
+        
+        .slider-label {
+            color: white;
+            font-size: 0.875rem;
+            text-align: center;
+        }
+
+        .hidden {
+            display: none;
+        }
+
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
 <body class="flex justify-start min-h-screen p-4 sm:p-12">
 
@@ -142,7 +192,7 @@
 
         <div class="p-4 rounded-b-2xl flex flex-col items-center space-y-2">
             <input type="text" id="chat-input" class="w-full p-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow bg-[#5a5a5a] text-white" placeholder="Type your message...">
-            <button id="send-btn" class="w-full p-3 bg-[#5a5a5a] text-white rounded-full hover:bg-[#6c6c6c] transition-colors">
+            <button id="send-btn">
                 Send
             </button>
         </div>
@@ -157,11 +207,21 @@
 
     <div class="tts-container h-[90vh] bg-[#808080] rounded-2xl flex flex-col">
         <div id="tts-title" class="p-6 text-center text-4xl font-normal text-white rounded-t-2xl title-font">
-            Text to voice
+            Text to Voice
         </div>
         
         <div class="tts-controls">
             <textarea id="tts-input" placeholder="Write your text here"></textarea>
+            
+            <input type="file" id="epub-file-input" class="hidden" accept=".epub">
+            <button id="import-epub-btn" class="mt-4">
+                <i class="fas fa-file-import"></i> Import EPUB
+            </button>
+            <button id="download-pdf-btn" class="mt-4 hidden">
+                <i class="fas fa-download"></i> Download PDF
+            </button>
+            <p id="loading-message" class="text-white mt-2 hidden">Processing...</p>
+
             <div class="tts-buttons">
                 <button id="tts-play-btn">
                     <i class="fas fa-play"></i> Play
@@ -169,6 +229,11 @@
                 <button id="tts-stop-btn">
                     <i class="fas fa-stop"></i> Stop
                 </button>
+            </div>
+            
+            <div class="w-full mt-4">
+                <div class="slider-label">Speed: <span id="tts-speed-value">1.0</span></div>
+                <input type="range" id="tts-speed-slider" class="pink-slider" min="0.5" max="2" value="1" step="0.1">
             </div>
         </div>
     </div>
@@ -185,7 +250,16 @@
         const ttsPlayBtn = document.getElementById('tts-play-btn');
         const ttsStopBtn = document.getElementById('tts-stop-btn');
         const copyLastResponseBtn = document.getElementById('copy-last-response-btn');
+        const ttsSpeedSlider = document.getElementById('tts-speed-slider');
+        const ttsSpeedValue = document.getElementById('tts-speed-value');
+        const epubFileInput = document.getElementById('epub-file-input');
+        const importEpubBtn = document.getElementById('import-epub-btn');
+        const downloadPdfBtn = document.getElementById('download-pdf-btn');
+        const loadingMessage = document.getElementById('loading-message');
         
+        let extractedText = '';
+        let epubFilename = '';
+
         // Helper function to add messages to the chat window
         function addMessage(sender, message, isTyping = false) {
             const messageWrapper = document.createElement('div');
@@ -294,7 +368,8 @@
             const textToSpeak = ttsInput.value.trim();
             if (textToSpeak) {
                 const speech = new SpeechSynthesisUtterance(textToSpeak);
-                speech.lang = 'da-DK';
+                speech.lang = 'en-US';
+                speech.rate = ttsSpeedSlider.value;
                 window.speechSynthesis.speak(speech);
             }
         });
@@ -304,13 +379,128 @@
             window.speechSynthesis.cancel();
         });
 
-        // Ny event listener for kopieringsknappen
+        // Event listener for copy button
         copyLastResponseBtn.addEventListener('click', () => {
             if (lastBotResponse) {
                 const cleanText = lastBotResponse.replace(/\*([^*]+)\*/g, '$1');
                 ttsInput.value = cleanText;
             }
         });
+        
+        // Event listener for the slider
+        ttsSpeedSlider.addEventListener('input', () => {
+            ttsSpeedValue.textContent = ttsSpeedSlider.value;
+        });
+
+        // Event listeners for EPUB import
+        importEpubBtn.addEventListener('click', () => {
+            epubFileInput.click();
+        });
+
+        // This is the new, self-contained code for handling the EPUB file
+        epubFileInput.addEventListener('change', async (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            loadingMessage.classList.remove('hidden');
+            downloadPdfBtn.classList.add('hidden');
+            ttsInput.value = "Processing EPUB file...";
+
+            try {
+                // Read the EPUB file as a binary string
+                const fileReader = new FileReader();
+                fileReader.onload = async function(event) {
+                    try {
+                        const epubData = event.target.result;
+                        const zip = await JSZip.loadAsync(epubData);
+                        let textContent = '';
+
+                        // Logic to extract text from the XHTML files
+                        const parser = new DOMParser();
+                        const containerXml = await zip.file('META-INF/container.xml').async('string');
+                        const containerDoc = parser.parseFromString(containerXml, 'application/xml');
+                        const opfPath = containerDoc.querySelector('rootfile').getAttribute('full-path');
+
+                        const opfXml = await zip.file(opfPath).async('string');
+                        const opfDoc = parser.parseFromString(opfXml, 'application/xml');
+
+                        const spine = opfDoc.querySelector('spine');
+                        const manifest = opfDoc.querySelector('manifest');
+
+                        const chapterPromises = Array.from(spine.children).map(async (itemRef) => {
+                            const idref = itemRef.getAttribute('idref');
+                            const manifestItem = manifest.querySelector(`item[id="${idref}"]`);
+                            const href = manifestItem.getAttribute('href');
+
+                            const chapterPath = opfPath.substring(0, opfPath.lastIndexOf('/') + 1) + href;
+                            const chapterFile = zip.file(chapterPath);
+                            
+                            if (chapterFile) {
+                                const chapterContent = await chapterFile.async('string');
+                                const chapterDoc = parser.parseFromString(chapterContent, 'application/xhtml+xml');
+                                return chapterDoc.body.textContent || '';
+                            }
+                            return '';
+                        });
+
+                        const textChunks = await Promise.all(chapterPromises);
+                        textContent = textChunks.join('\n\n').trim();
+                        
+                        if (textContent) {
+                            ttsInput.value = textContent;
+                            downloadPdfBtn.classList.remove('hidden');
+                            alert("EPUB text extracted successfully!");
+                        } else {
+                            ttsInput.value = "Could not extract text from EPUB.";
+                        }
+                    } catch (error) {
+                        console.error('Extraction error:', error);
+                        ttsInput.value = 'Failed to process EPUB file. Please check the file format.';
+                    } finally {
+                        loadingMessage.classList.add('hidden');
+                    }
+                };
+                fileReader.readAsArrayBuffer(file);
+                
+            } catch (error) {
+                console.error('File reading error:', error);
+                ttsInput.value = 'An error occurred while reading the file.';
+                loadingMessage.classList.add('hidden');
+            }
+        });
+
+        downloadPdfBtn.addEventListener('click', () => {
+            if (ttsInput.value) {
+                createAndDownloadPDF(ttsInput.value, epubFileInput.files[0].name);
+            } else {
+                alert("Please import an EPUB file first.");
+            }
+        });
+        
+        function createAndDownloadPDF(text, filename) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const pageHeight = doc.internal.pageSize.getHeight();
+            const margin = 10;
+            const lineHeight = 7;
+            const lines = doc.splitTextToSize(text, pageWidth - margin * 2);
+            let y = margin;
+
+            doc.setFontSize(12);
+
+            lines.forEach((line) => {
+                if (y + lineHeight > pageHeight - margin) {
+                    doc.addPage();
+                    y = margin;
+                }
+                doc.text(line, margin, y);
+                y += lineHeight;
+            });
+            
+            const pdfFilename = filename.replace('.epub', '.pdf');
+            doc.save(pdfFilename);
+        }
     </script>
 </body>
 </html>
