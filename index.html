@@ -92,7 +92,6 @@
             background-color: #ffb6c1;
             color: white;
             border-radius: 2rem;
-            font-size: 1.25rem;
             cursor: pointer;
             transition: background-color 0.3s;
             border: none;
@@ -105,6 +104,7 @@
         #send-btn {
             width: 100%;
             padding: 1rem;
+            font-size: 1.25rem;
         }
         
         #copy-last-response-btn {
@@ -123,6 +123,13 @@
         #tts-play-btn, #tts-stop-btn {
             width: 50%;
             padding: 1rem;
+            font-size: 1.25rem;
+        }
+        
+        #import-epub-btn {
+            width: 100%;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem; /* Mindre skriftstørrelse her */
         }
         
         .copy-button-container {
@@ -175,7 +182,7 @@
             Actuary AI
         </div>
 
-        <div id="chat-window" class="flex-grow p-6 overflow-y-auto space-y-4">
+        <div id="chat-window" class-="flex-grow p-6 overflow-y-auto space-y-4">
             </div>
 
         <div class="p-4 rounded-b-2xl flex flex-col items-center space-y-2">
@@ -379,16 +386,31 @@
         epubFileInput.addEventListener('change', async (event) => {
             const file = event.target.files[0];
             if (file) {
+                // Skriv 'Loading...' i tekstfeltet mens vi venter
+                ttsInput.value = "Loading EPUB file...";
+                
                 const reader = new FileReader();
                 reader.onload = async (e) => {
                     const book = e.target.result;
                     const epub = new ePub(book);
-
+                    
                     epub.ready.then(() => {
-                        epub.flow.on('rendered', (section) => {
-                            const text = section.contents.extract();
-                            ttsInput.value = text.trim();
+                        const allText = [];
+                        epub.spine.each(item => {
+                            item.load().then(doc => {
+                                const text = doc.body.textContent;
+                                if(text && text.trim().length > 0) {
+                                    allText.push(text.trim());
+                                }
+                            });
                         });
+                        
+                        // Vent 1 sekund for at sikre, at alle tekster er indlæst
+                        setTimeout(() => {
+                            ttsInput.value = allText.join('\n\n');
+                            // Tilføj en besked til brugeren
+                            alert("EPUB file imported successfully!");
+                        }, 1000); 
                     });
                 };
                 reader.readAsArrayBuffer(file);
