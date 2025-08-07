@@ -2,7 +2,6 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 // Initialiser Gemini AI med din API-nøgle
-// Nøgle skal gemmes som en miljøvariabel i Vercel
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 module.exports = async (req, res) => {
@@ -11,7 +10,6 @@ module.exports = async (req, res) => {
         return res.status(405).json({ error: 'Kun POST-anmodninger accepteres.' });
     }
     
-    // Hent teksten fra anmodningens body
     const { text } = req.body;
     
     if (!text) {
@@ -21,8 +19,15 @@ module.exports = async (req, res) => {
     try {
         const ttsModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview-tts" });
         
+        const request = {
+            text: text,
+            outputAudioConfig: {
+                languageCode: "da-DK" // Tilføjelse af sprogindstilling
+            }
+        };
+
         // Kald Gemini TTS API og stream lyden
-        const audioStream = await ttsModel.generateContentStream({ text: text });
+        const audioStream = await ttsModel.generateContentStream(request);
         
         // Sæt headeren for lydfilen
         res.setHeader('Content-Type', 'audio/wav');
