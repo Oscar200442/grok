@@ -272,6 +272,7 @@
         const chatInput = document.getElementById('chat-input');
         const sendBtn = document.getElementById('send-btn');
         let lastBotResponse = '';
+        let chatHistory = [];
 
         // DOM elements for TTS
         const ttsInput = document.getElementById('tts-input');
@@ -287,6 +288,7 @@
         
         let extractedText = '';
         let epubFilename = '';
+        let audio = null;
 
         // Helper function to add messages to the chat window
         function addMessage(sender, message, isTyping = false) {
@@ -363,32 +365,42 @@
             console.log(`[User Action] Sending message: "${userMessage}"`);
 
             addMessage('user', userMessage);
+            chatHistory.push({ role: "user", parts: [{ text: userMessage }] });
             chatInput.value = '';
 
             const typingBubble = addMessage('bot', '', true);
-            console.log("[API Call] Fetching response from /api");
-
+            console.log("[API Call] Fetching response from Gemini API");
+            
             try {
-                const response = await fetch('/api', {
+                const payload = { contents: chatHistory };
+                const apiKey = "";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+                
+                const response = await fetch(apiUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ prompt: userMessage })
+                    body: JSON.stringify(payload)
                 });
-                const data = await response.json();
+                
+                const result = await response.json();
                 
                 typingBubble.classList.remove('typing');
                 
-                if (data.error) {
-                    console.error("[API Error]", data.error);
-                    simulateTyping(`Error: ${data.error}`, typingBubble);
+                if (result.candidates && result.candidates.length > 0 &&
+                    result.candidates[0].content && result.candidates[0].content.parts &&
+                    result.candidates[0].content.parts.length > 0) {
+                    const text = result.candidates[0].content.parts[0].text;
+                    console.log("[API Success] Received response:", text);
+                    simulateTyping(text, typingBubble);
+                    chatHistory.push({ role: "model", parts: [{ text: text }] });
                 } else {
-                    console.log("[API Success] Received response:", data);
-                    simulateTyping(data.text, typingBubble);
+                    console.error("[API Error] Unexpected API response structure:", result);
+                    simulateTyping('The AI could not generate a response. Please try again.', typingBubble);
                 }
             } catch (error) {
                 console.error('[API Call Failed]', error);
                 typingBubble.classList.remove('typing');
-                simulateTyping('Could not connect to the server.', typingBubble);
+                simulateTyping('Could not connect to the API. Please check your network connection.', typingBubble);
             }
         }
         
