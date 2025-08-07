@@ -123,6 +123,23 @@
             messageWrapper.appendChild(messageBubble);
             chatWindow.appendChild(messageWrapper);
             chatWindow.scrollTop = chatWindow.scrollHeight; // Scroll to the bottom
+            return messageBubble; // Return the element so we can modify it
+        }
+
+        // Function to create a typing effect
+        function typeMessage(element, text) {
+            let i = 0;
+            element.innerHTML = '';
+            
+            function type() {
+                if (i < text.length) {
+                    element.innerHTML += text.charAt(i);
+                    i++;
+                    chatWindow.scrollTop = chatWindow.scrollHeight; // Keep scrolling down
+                    setTimeout(type, 20); // Adjust typing speed here
+                }
+            }
+            type();
         }
 
         // Function to send a message to the chatbot API
@@ -133,7 +150,7 @@
             addMessage('user', userMessage);
             chatInput.value = '';
 
-            addMessage('bot', '', true);
+            const botBubble = addMessage('bot', null, true); // Add a bot bubble with "thinking" animation
 
             try {
                 const response = await fetch('/api', {
@@ -143,17 +160,18 @@
                 });
                 const data = await response.json();
                 
-                chatWindow.lastChild.remove();
-                
+                // Remove the typing animation and start typing the real message
+                botBubble.classList.remove('typing');
+
                 if (data.error) {
-                    addMessage('bot', `Error: ${data.error}`);
+                    botBubble.innerHTML = `Error: ${data.error}`;
                 } else {
-                    addMessage('bot', data.text);
+                    typeMessage(botBubble, data.text);
                 }
             } catch (error) {
                 console.error('Error:', error);
-                chatWindow.lastChild.remove();
-                addMessage('bot', 'Could not connect to the server.');
+                botBubble.classList.remove('typing');
+                botBubble.innerHTML = 'Could not connect to the server.';
             }
         }
         
