@@ -88,7 +88,7 @@
             margin-bottom: 1rem;
         }
         
-        #send-btn, #copy-last-response-btn, #tts-play-btn, #tts-stop-btn, #import-epub-btn {
+        #send-btn, #copy-last-response-btn, #tts-play-btn, #tts-stop-btn, #import-epub-btn, #download-pdf-btn {
             background-color: #ffb6c1;
             color: white;
             border-radius: 2rem;
@@ -97,7 +97,7 @@
             border: none;
         }
 
-        #send-btn:hover, #copy-last-response-btn:hover, #tts-play-btn:hover, #tts-stop-btn:hover, #import-epub-btn:hover {
+        #send-btn:hover, #copy-last-response-btn:hover, #tts-play-btn:hover, #tts-stop-btn:hover, #import-epub-btn:hover, #download-pdf-btn:hover {
             background-color: #ff91a4;
         }
         
@@ -126,10 +126,10 @@
             font-size: 1.25rem;
         }
         
-        #import-epub-btn {
+        #import-epub-btn, #download-pdf-btn {
             width: 100%;
             padding: 0.75rem 1.5rem;
-            font-size: 1rem; /* Mindre skriftstørrelse her */
+            font-size: 1rem;
         }
         
         .copy-button-container {
@@ -172,8 +172,13 @@
             text-align: center;
         }
 
+        .hidden {
+            display: none;
+        }
+
     </style>
     <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.93/dist/epub.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body class="flex justify-start min-h-screen p-4 sm:p-12">
 
@@ -212,6 +217,9 @@
             <button id="import-epub-btn" class="mt-4">
                 <i class="fas fa-file-import"></i> Import EPUB
             </button>
+            <button id="download-pdf-btn" class="mt-4 hidden">
+                <i class="fas fa-download"></i> Download PDF
+            </button>
 
             <div class="tts-buttons">
                 <button id="tts-play-btn">
@@ -245,6 +253,7 @@
         const ttsSpeedValue = document.getElementById('tts-speed-value');
         const epubFileInput = document.getElementById('epub-file-input');
         const importEpubBtn = document.getElementById('import-epub-btn');
+        const downloadPdfBtn = document.getElementById('download-pdf-btn');
         
         // Helper function to add messages to the chat window
         function addMessage(sender, message, isTyping = false) {
@@ -383,39 +392,58 @@
             epubFileInput.click();
         });
 
+        // Ny funktion til at konvertere EPUB til PDF
         epubFileInput.addEventListener('change', async (event) => {
             const file = event.target.files[0];
             if (file) {
-                // Skriv 'Loading...' i tekstfeltet mens vi venter
-                ttsInput.value = "Loading EPUB file...";
-                
                 const reader = new FileReader();
                 reader.onload = async (e) => {
                     const book = e.target.result;
                     const epub = new ePub(book);
                     
                     epub.ready.then(() => {
-                        const allText = [];
-                        epub.spine.each(item => {
-                            item.load().then(doc => {
-                                const text = doc.body.textContent;
-                                if(text && text.trim().length > 0) {
-                                    allText.push(text.trim());
-                                }
-                            });
+                        epub.flow.on('rendered', (section) => {
+                            const text = section.contents.extract();
+                            ttsInput.value = text.trim();
                         });
                         
-                        // Vent 1 sekund for at sikre, at alle tekster er indlæst
-                        setTimeout(() => {
-                            ttsInput.value = allText.join('\n\n');
-                            // Tilføj en besked til brugeren
-                            alert("EPUB file imported successfully!");
-                        }, 1000); 
+                        epub.spine.each(item => {
+                            item.load().then(doc => {
+                                const fullText = doc.body.textContent;
+                                createAndDownloadPDF(fullText, file.name);
+                            });
+                        });
                     });
                 };
                 reader.readAsArrayBuffer(file);
             }
         });
+
+        function createAndDownloadPDF(text, filename) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const pageHeight = doc.internal.pageSize.getHeight();
+            const margin = 10;
+            const lineHeight = 7;
+            const lines = doc.splitTextToSize(text, pageWidth - margin * 2);
+            let y = margin;
+
+            doc.setFontSize(12);
+
+            lines.forEach((line) => {
+                if (y + lineHeight > pageHeight - margin) {
+                    doc.addPage();
+                    y = margin;
+                }
+                doc.text(line, margin, y);
+                y += lineHeight;
+            });
+            
+            // Gem PDF'en med et passende filnavn
+            const pdfFilename = filename.replace('.epub', '.pdf');
+            doc.save(pdfFilename);
+        }
     </script>
 </body>
 </html>
