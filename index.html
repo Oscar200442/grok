@@ -14,12 +14,21 @@
         body {
             font-family: 'Inter', sans-serif;
             background-color: #808080;
+            display: flex;
+            justify-content: center; /* Centrer indholdet vandret */
+            align-items: flex-start; /* Juster indholdet til toppen lodret */
+            min-height: 100vh;
+            padding: 4rem; /* Øget padding for at give plads til to bokse */
+            gap: 4rem; /* Tilføj mellemrum mellem de to bokse */
         }
-        .chat-container {
+        .chat-container, .tts-container {
             width: 95%;
             max-width: 450px;
             background-color: #808080;
             border-radius: 2rem;
+            height: 90vh; /* Sæt en fast højde for at matche */
+            display: flex;
+            flex-direction: column;
         }
         .message-bubble {
             border-radius: 1.5rem;
@@ -31,17 +40,12 @@
             color: white;
             border-bottom-right-radius: 0.5rem;
         }
-        .bot-bubble {
-            background-color: #5a5a5a;
-            color: white;
-            border-bottom-left-radius: 0.5rem;
-        }
         .bot-bubble-iphone {
             background-color: #34c759;
             color: white;
             border-bottom-left-radius: 0.5rem;
         }
-        #chat-input::placeholder {
+        #chat-input::placeholder, #tts-input::placeholder {
             color: #d1d5db;
         }
         .typing::after {
@@ -61,12 +65,48 @@
         #oraculum-title {
             font-family: 'Permanent Marker', cursive;
         }
+        
+        .tts-controls {
+            flex-grow: 1; /* Sørg for, at denne div fylder det resterende rum */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+        }
+        
+        #tts-input {
+            width: 100%;
+            height: 200px;
+            padding: 1rem;
+            border-radius: 1rem;
+            background-color: #5a5a5a;
+            color: white;
+            border: none;
+            resize: none; /* Forhindrer brugeren i at ændre størrelsen */
+            font-size: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        #tts-play-btn {
+            width: 100%;
+            padding: 1rem;
+            background-color: #34c759; /* Grøn farve for at matche bot-bobler */
+            color: white;
+            border-radius: 2rem;
+            font-size: 1.25rem;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        #tts-play-btn:hover {
+            background-color: #28a745;
+        }
     </style>
 </head>
 <body class="flex justify-start min-h-screen p-4 sm:p-12">
 
     <div class="chat-container h-[90vh] bg-[#808080] rounded-2xl flex flex-col">
-        
         <div id="oraculum-title" class="p-6 text-center text-4xl font-normal text-white rounded-t-2xl">
             Actuary AI
         </div>
@@ -76,18 +116,34 @@
 
         <div class="p-4 rounded-b-2xl flex flex-col items-center space-y-2">
             <input type="text" id="chat-input" class="w-full p-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow bg-[#5a5a5a] text-white" placeholder="Type your message...">
-            
             <button id="send-btn" class="w-full p-3 bg-[#5a5a5a] text-white rounded-full hover:bg-[#6c6c6c] transition-colors">
                 Send
             </button>
         </div>
     </div>
 
+    <div class="tts-container h-[90vh] bg-[#808080] rounded-2xl flex flex-col">
+        <div id="tts-title" class="p-6 text-center text-4xl font-normal text-white rounded-t-2xl">
+            Tekst til stemme
+        </div>
+        
+        <div class="tts-controls">
+            <textarea id="tts-input" placeholder="Skriv din tekst her..."></textarea>
+            <button id="tts-play-btn">
+                <i class="fas fa-play"></i> Afspil
+            </button>
+        </div>
+    </div>
+
     <script>
-        // DOM elements
+        // DOM elements for chatbot
         const chatWindow = document.getElementById('chat-window');
         const chatInput = document.getElementById('chat-input');
         const sendBtn = document.getElementById('send-btn');
+
+        // DOM elements for TTS
+        const ttsInput = document.getElementById('tts-input');
+        const ttsPlayBtn = document.getElementById('tts-play-btn');
         
         // Helper function to add messages to the chat window
         function addMessage(sender, message, isTyping = false) {
@@ -123,14 +179,13 @@
         // New function to simulate typing out the response
         function simulateTyping(text, bubbleElement) {
             let i = 0;
-            const speed = 25; // Juster skrivehastigheden (lavere tal er hurtigere)
-            bubbleElement.innerHTML = ''; // Ryd "The AI is thinking..." teksten
+            const speed = 25;
+            bubbleElement.innerHTML = '';
 
             function typeWriter() {
                 if (i < text.length) {
                     const char = text[i];
                     
-                    // Simple håndtering af markdown for at undgå at opdele <em> tags
                     if (char === '*') {
                         let endIndex = text.indexOf('*', i + 1);
                         if (endIndex !== -1) {
@@ -171,7 +226,6 @@
                 });
                 const data = await response.json();
                 
-                // Fjern "typing" indikatoren og start skrive-simulationen
                 typingBubble.classList.remove('typing');
                 
                 if (data.error) {
@@ -186,11 +240,25 @@
             }
         }
         
-        // Event listeners
+        // Event listener for chatbot
         sendBtn.addEventListener('click', sendMessage);
         chatInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 sendMessage();
+            }
+        });
+
+        // Event listener for TTS
+        ttsPlayBtn.addEventListener('click', () => {
+            const textToSpeak = ttsInput.value.trim();
+            if (textToSpeak) {
+                // Her skal din kode for at kalde Geminis TTS API være
+                console.log("Afspiller teksten:", textToSpeak);
+
+                // Eksempel ved brug af den indbyggede Web Speech API
+                const speech = new SpeechSynthesisUtterance(textToSpeak);
+                speech.lang = 'da-DK'; // Sæt sproget til dansk
+                window.speechSynthesis.speak(speech);
             }
         });
     </script>
