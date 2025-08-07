@@ -178,6 +178,7 @@
 
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
 <body class="flex justify-start min-h-screen p-4 sm:p-12">
 
@@ -396,45 +397,81 @@
             epubFileInput.click();
         });
 
-        // This is the new, crucial code for handling the EPUB file
+        // This is the new, self-contained code for handling the EPUB file
         epubFileInput.addEventListener('change', async (event) => {
             const file = event.target.files[0];
             if (!file) return;
 
             loadingMessage.classList.remove('hidden');
             downloadPdfBtn.classList.add('hidden');
-            ttsInput.value = "Sending EPUB file to server for text extraction...";
-
-            const formData = new FormData();
-            formData.append('epubFile', file);
-            epubFilename = file.name;
+            ttsInput.value = "Processing EPUB file...";
 
             try {
-                const response = await fetch('/api/convert-epub', {
-                    method: 'POST',
-                    body: formData
-                });
+                // Read the EPUB file as a binary string
+                const fileReader = new FileReader();
+                fileReader.onload = async function(event) {
+                    try {
+                        const epubData = event.target.result;
+                        const zip = await JSZip.loadAsync(epubData);
+                        let textContent = '';
 
-                if (response.ok) {
-                    extractedText = await response.text();
-                    ttsInput.value = extractedText;
-                    downloadPdfBtn.classList.remove('hidden');
-                    alert("EPUB text extracted successfully!");
-                } else {
-                    const errorText = await response.text();
-                    ttsInput.value = `Conversion failed: ${errorText}`;
-                }
+                        // Logic to extract text from the XHTML files
+                        const parser = new DOMParser();
+                        const containerXml = await zip.file('META-INF/container.xml').async('string');
+                        const containerDoc = parser.parseFromString(containerXml, 'application/xml');
+                        const opfPath = containerDoc.querySelector('rootfile').getAttribute('full-path');
+
+                        const opfXml = await zip.file(opfPath).async('string');
+                        const opfDoc = parser.parseFromString(opfXml, 'application/xml');
+
+                        const spine = opfDoc.querySelector('spine');
+                        const manifest = opfDoc.querySelector('manifest');
+
+                        const chapterPromises = Array.from(spine.children).map(async (itemRef) => {
+                            const idref = itemRef.getAttribute('idref');
+                            const manifestItem = manifest.querySelector(`item[id="${idref}"]`);
+                            const href = manifestItem.getAttribute('href');
+
+                            const chapterPath = opfPath.substring(0, opfPath.lastIndexOf('/') + 1) + href;
+                            const chapterFile = zip.file(chapterPath);
+                            
+                            if (chapterFile) {
+                                const chapterContent = await chapterFile.async('string');
+                                const chapterDoc = parser.parseFromString(chapterContent, 'application/xhtml+xml');
+                                return chapterDoc.body.textContent || '';
+                            }
+                            return '';
+                        });
+
+                        const textChunks = await Promise.all(chapterPromises);
+                        textContent = textChunks.join('\n\n').trim();
+                        
+                        if (textContent) {
+                            ttsInput.value = textContent;
+                            downloadPdfBtn.classList.remove('hidden');
+                            alert("EPUB text extracted successfully!");
+                        } else {
+                            ttsInput.value = "Could not extract text from EPUB.";
+                        }
+                    } catch (error) {
+                        console.error('Extraction error:', error);
+                        ttsInput.value = 'Failed to process EPUB file. Please check the file format.';
+                    } finally {
+                        loadingMessage.classList.add('hidden');
+                    }
+                };
+                fileReader.readAsArrayBuffer(file);
+                
             } catch (error) {
-                console.error('Error:', error);
-                ttsInput.value = 'Failed to connect to the server or a network error occurred.';
-            } finally {
+                console.error('File reading error:', error);
+                ttsInput.value = 'An error occurred while reading the file.';
                 loadingMessage.classList.add('hidden');
             }
         });
 
         downloadPdfBtn.addEventListener('click', () => {
-            if (extractedText) {
-                createAndDownloadPDF(extractedText, epubFilename);
+            if (ttsInput.value) {
+                createAndDownloadPDF(ttsInput.value, epubFileInput.files[0].name);
             } else {
                 alert("Please import an EPUB file first.");
             }
