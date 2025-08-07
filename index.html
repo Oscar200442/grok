@@ -13,7 +13,7 @@
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #808080;
+            background-color: #555555;
             display: flex;
             justify-content: flex-end;
             align-items: flex-start;
@@ -24,11 +24,20 @@
         .chat-container, .tts-container {
             width: 95%;
             max-width: 450px;
-            background-color: #808080;
+            background-color: #555555;
             border-radius: 2rem;
             height: 90vh;
             display: flex;
             flex-direction: column;
+            padding: 1.5rem;
+        }
+        #chat-window {
+            background-color: #3A3A3A;
+            flex-grow: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+            space-y: 4;
+            border-radius: 1.5rem;
         }
         .message-bubble {
             border-radius: 1.5rem;
@@ -80,12 +89,22 @@
             height: 200px;
             padding: 1rem;
             border-radius: 1rem;
-            background-color: #5a5a5a;
+            background-color: #3a3a3a;
             color: white;
             border: none;
             resize: none;
             font-size: 1rem;
             margin-bottom: 1rem;
+        }
+        
+        #chat-input {
+            width: 100%;
+            padding: 1rem;
+            border-radius: 1rem;
+            background-color: #3a3a3a;
+            color: white;
+            border: none;
+            font-size: 1rem;
         }
         
         #send-btn, #copy-last-response-btn, #tts-play-btn, #tts-stop-btn, #import-epub-btn, #download-pdf-btn {
@@ -153,7 +172,7 @@
             height: 20px;
             background: #ffb6c1;
             border-radius: 50%;
-            border: 2px solid #808080;
+            border: 2px solid #555555;
             cursor: pointer;
         }
         
@@ -162,7 +181,7 @@
             height: 20px;
             background: #ffb6c1;
             border-radius: 50%;
-            border: 2px solid #808080;
+            border: 2px solid #555555;
             cursor: pointer;
         }
         
@@ -175,6 +194,44 @@
         .hidden {
             display: none;
         }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+        }
+        .modal-content {
+            background-color: #3A3A3A;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 500px;
+            border-radius: 1rem;
+            color: white;
+            text-align: center;
+        }
+        .close-btn {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .close-btn:hover,
+        .close-btn:focus {
+            color: white;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .modal-body p {
+            margin: 0;
+        }
 
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -182,22 +239,24 @@
 </head>
 <body class="flex justify-start min-h-screen p-4 sm:p-12">
 
-    <div class="chat-container h-[90vh] bg-[#808080] rounded-2xl flex flex-col">
+    <!-- Chatbot Section -->
+    <div class="chat-container h-[90vh] rounded-2xl flex flex-col">
         <div id="oraculum-title" class="p-6 text-center text-4xl font-normal text-white rounded-t-2xl title-font">
             Actuary AI
         </div>
 
         <div id="chat-window" class="flex-grow p-6 overflow-y-auto space-y-4">
-            </div>
+        </div>
 
         <div class="p-4 rounded-b-2xl flex flex-col items-center space-y-2">
-            <input type="text" id="chat-input" class="w-full p-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow bg-[#5a5a5a] text-white" placeholder="Type your message...">
+            <input type="text" id="chat-input" class="w-full p-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow text-white" placeholder="Type your message...">
             <button id="send-btn">
                 Send
             </button>
         </div>
     </div>
 
+    <!-- Button to transfer last AI response -->
     <div class="copy-button-container flex flex-col items-center justify-center h-[90vh]">
         <button id="copy-last-response-btn" class="flex items-center space-x-2">
             <i class="fas fa-arrow-right"></i>
@@ -205,7 +264,8 @@
         </button>
     </div>
 
-    <div class="tts-container h-[90vh] bg-[#808080] rounded-2xl flex flex-col">
+    <!-- Right side: Text-to-Voice -->
+    <div class="tts-container h-[90vh] rounded-2xl flex flex-col">
         <div id="tts-title" class="p-6 text-center text-4xl font-normal text-white rounded-t-2xl title-font">
             Text to Voice
         </div>
@@ -237,6 +297,16 @@
             </div>
         </div>
     </div>
+    
+    <!-- Custom Modal for Messages -->
+    <div id="myModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <div class="modal-body">
+                <p id="modal-text"></p>
+            </div>
+        </div>
+    </div>
 
     <script>
         // DOM elements for chatbot
@@ -244,6 +314,7 @@
         const chatInput = document.getElementById('chat-input');
         const sendBtn = document.getElementById('send-btn');
         let lastBotResponse = '';
+        let chatHistory = [];
 
         // DOM elements for TTS
         const ttsInput = document.getElementById('tts-input');
@@ -257,9 +328,29 @@
         const downloadPdfBtn = document.getElementById('download-pdf-btn');
         const loadingMessage = document.getElementById('loading-message');
         
-        let extractedText = '';
-        let epubFilename = '';
+        // Modal elements
+        const modal = document.getElementById("myModal");
+        const modalText = document.getElementById("modal-text");
+        const closeBtn = document.querySelector(".close-btn");
+        
+        let audio = null;
 
+        // Function to show custom modal
+        function showModal(message) {
+            modalText.textContent = message;
+            modal.style.display = "block";
+        }
+
+        closeBtn.onclick = function() {
+            modal.style.display = "none";
+        }
+
+        window.onclick = function(event) {
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        }
+        
         // Helper function to add messages to the chat window
         function addMessage(sender, message, isTyping = false) {
             const messageWrapper = document.createElement('div');
@@ -327,31 +418,41 @@
         async function sendMessage() {
             const userMessage = chatInput.value.trim();
             if (!userMessage) return;
-
+            
             addMessage('user', userMessage);
+            chatHistory.push({ role: "user", parts: [{ text: userMessage }] });
             chatInput.value = '';
 
             const typingBubble = addMessage('bot', '', true);
-
+            
             try {
-                const response = await fetch('/api', {
+                const payload = { contents: chatHistory };
+                const apiKey = "";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+                
+                const response = await fetch(apiUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ prompt: userMessage })
+                    body: JSON.stringify(payload)
                 });
-                const data = await response.json();
+                
+                const result = await response.json();
                 
                 typingBubble.classList.remove('typing');
                 
-                if (data.error) {
-                    simulateTyping(`Error: ${data.error}`, typingBubble);
+                if (result.candidates && result.candidates.length > 0 &&
+                    result.candidates[0].content && result.candidates[0].content.parts &&
+                    result.candidates[0].content.parts.length > 0) {
+                    const text = result.candidates[0].content.parts[0].text;
+                    simulateTyping(text, typingBubble);
+                    chatHistory.push({ role: "model", parts: [{ text: text }] });
                 } else {
-                    simulateTyping(data.text, typingBubble);
+                    simulateTyping('The AI could not generate a response. Please try again.', typingBubble);
                 }
             } catch (error) {
-                console.error('Error:', error);
+                console.error('API Call Failed:', error);
                 typingBubble.classList.remove('typing');
-                simulateTyping('Could not connect to the server.', typingBubble);
+                simulateTyping('Could not connect to the API. Please check your network connection.', typingBubble);
             }
         }
         
@@ -371,6 +472,8 @@
                 speech.lang = 'en-US';
                 speech.rate = ttsSpeedSlider.value;
                 window.speechSynthesis.speak(speech);
+            } else {
+                showModal("Please enter some text to speak.");
             }
         });
 
@@ -384,6 +487,8 @@
             if (lastBotResponse) {
                 const cleanText = lastBotResponse.replace(/\*([^*]+)\*/g, '$1');
                 ttsInput.value = cleanText;
+            } else {
+                showModal("There is no previous AI response to transfer.");
             }
         });
         
@@ -397,7 +502,6 @@
             epubFileInput.click();
         });
 
-        // This is the new, self-contained code for handling the EPUB file
         epubFileInput.addEventListener('change', async (event) => {
             const file = event.target.files[0];
             if (!file) return;
@@ -407,7 +511,6 @@
             ttsInput.value = "Processing EPUB file...";
 
             try {
-                // Read the EPUB file as a binary string
                 const fileReader = new FileReader();
                 fileReader.onload = async function(event) {
                     try {
@@ -415,7 +518,6 @@
                         const zip = await JSZip.loadAsync(epubData);
                         let textContent = '';
 
-                        // Logic to extract text from the XHTML files
                         const parser = new DOMParser();
                         const containerXml = await zip.file('META-INF/container.xml').async('string');
                         const containerDoc = parser.parseFromString(containerXml, 'application/xml');
@@ -449,7 +551,7 @@
                         if (textContent) {
                             ttsInput.value = textContent;
                             downloadPdfBtn.classList.remove('hidden');
-                            alert("EPUB text extracted successfully!");
+                            showModal("EPUB text extracted successfully!");
                         } else {
                             ttsInput.value = "Could not extract text from EPUB.";
                         }
@@ -473,7 +575,7 @@
             if (ttsInput.value) {
                 createAndDownloadPDF(ttsInput.value, epubFileInput.files[0].name);
             } else {
-                alert("Please import an EPUB file first.");
+                showModal("Please import an EPUB file first.");
             }
         });
         
