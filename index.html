@@ -30,6 +30,21 @@
             color: #374151;
             border-bottom-left-radius: 0;
         }
+        /* Simple typing animation */
+        .typing::after {
+            overflow: hidden;
+            display: inline-block;
+            vertical-align: bottom;
+            -webkit-animation: ellipsis steps(4,end) 1000ms infinite;
+            animation: ellipsis steps(4,end) 1000ms infinite;
+            content: "\2026";
+            width: 0px;
+        }
+        @keyframes ellipsis {
+            to {
+                width: 1.25em;
+            }
+        }
     </style>
 </head>
 <body class="flex items-center justify-center min-h-screen p-4">
@@ -48,6 +63,12 @@
         <!-- Input-område -->
         <div class="p-4 border-t border-gray-200 rounded-b-2xl flex items-center space-x-2">
             <input type="text" id="chat-input" class="flex-grow p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" placeholder="Skriv din besked...">
+            
+            <div class="flex items-center space-x-2">
+                <input type="checkbox" id="autoplay-checkbox" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                <label for="autoplay-checkbox" class="text-sm text-gray-700">Auto-afspil</label>
+            </div>
+            
             <button id="speak-btn" class="p-3 bg-gray-200 text-gray-600 rounded-xl hover:bg-gray-300 transition-colors" title="Afspil seneste svar">
                 <span id="speak-icon" class="fas fa-volume-up"></span>
             </button>
@@ -63,24 +84,31 @@
         const sendBtn = document.getElementById('send-btn');
         const speakBtn = document.getElementById('speak-btn');
         const speakIcon = document.getElementById('speak-icon');
+        const autoplayCheckbox = document.getElementById('autoplay-checkbox');
         const audioPlayer = new Audio();
         let lastBotResponse = '';
 
         // Helper function for adding messages to the chat window
-        function addMessage(sender, message) {
+        function addMessage(sender, message, isTyping = false) {
             const messageWrapper = document.createElement('div');
             messageWrapper.classList.add('flex', 'flex-col', sender === 'user' ? 'items-end' : 'items-start');
 
             const messageBubble = document.createElement('div');
             messageBubble.classList.add('message-bubble');
             messageBubble.classList.add(sender === 'user' ? 'user-bubble' : 'bot-bubble');
-            messageBubble.innerText = message;
+            
+            if (isTyping) {
+                messageBubble.classList.add('typing');
+                messageBubble.innerText = 'AI tænker';
+            } else {
+                messageBubble.innerText = message;
+            }
             
             messageWrapper.appendChild(messageBubble);
             chatWindow.appendChild(messageWrapper);
             chatWindow.scrollTop = chatWindow.scrollHeight; // Scroll to the bottom
             
-            if (sender === 'bot') {
+            if (sender === 'bot' && !isTyping) {
                 lastBotResponse = message;
             }
         }
@@ -93,7 +121,7 @@
             addMessage('user', userMessage);
             chatInput.value = '';
 
-            addMessage('bot', 'AI tænker...'); // Placeholder for bot response
+            const typingMessageElement = addMessage('bot', '', true); // Show typing animation
 
             try {
                 // Send the message to your Vercel API
@@ -107,13 +135,17 @@
 
                 const data = await response.json();
                 
-                // Remove the "AI tænker..." placeholder
+                // Remove the typing animation
                 chatWindow.lastChild.remove(); 
                 
                 if (data.error) {
                     addMessage('bot', `Fejl: ${data.error}`);
                 } else {
                     addMessage('bot', data.text);
+                    // Check if auto-play is enabled
+                    if (autoplayCheckbox.checked) {
+                        speakResponse();
+                    }
                 }
 
             } catch (error) {
@@ -140,6 +172,11 @@
                     },
                     body: JSON.stringify({ text: lastBotResponse })
                 });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to generate speech.');
+                }
 
                 const blob = await response.blob();
                 const audioUrl = URL.createObjectURL(blob);
@@ -156,6 +193,7 @@
                 
             } catch (error) {
                 console.error('Error during TTS:', error);
+                addMessage('bot', `Fejl ved tale-generering: ${error.message}`);
                 // Hide loading state and re-enable button on error
                 speakBtn.disabled = false;
                 speakIcon.classList.remove('fa-spinner', 'fa-spin');
